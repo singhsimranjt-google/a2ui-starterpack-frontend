@@ -1,0 +1,58 @@
+<div class="app-container">
+  <!-- Header -->
+  <header class="app-header">
+    <div class="header-brand">
+      <div class="logo-badge">🤖 A2UI</div>
+      <div class="title-group">
+        <h1>{{ title() }}</h1>
+        <span class="badge">Google ADK Angular Renderer</span>
+      </div>
+    </div>
+    <div class="header-status">
+      <span class="status-dot" [ngClass]="agentStatus()"></span>
+      <span class="status-text">Status: {{ agentStatus() | uppercase }}</span>
+    </div>
+  </header>
+
+  <!-- Main Workspace -->
+  <main class="app-main">
+    <!-- Controls Panel -->
+    <section class="control-panel">
+      <h2>Prompt Google ADK Agent</h2>
+      <p class="subtitle">Interact with your agent to stream and render dynamic A2UI components in real-time.</p>
+      
+      <div class="input-group">
+        <input 
+          type="text" 
+          [(ngModel)]="userInput" 
+          (keyup.enter)="triggerAgentAction()" 
+          placeholder="e.g. Generate quarterly budget breakdown or triage customer order..."
+          [disabled]="agentStatus() === 'executing'"
+        />
+        <button (click)="triggerAgentAction()" [disabled]="agentStatus() === 'executing' || !userInput().trim()">
+          {{ agentStatus() === 'executing' ? 'Generating...' : 'Send to Agent' }}
+        </button>
+      </div>
+    </section>
+
+    <!-- A2UI Card Stream -->
+    <section class="card-stream">
+      <h2>Rendered A2UI Action Stream</h2>
+      
+      <div class="cards-grid">
+        <div *ngFor="let card of cards()" class="a2ui-card" [ngClass]="card.type">
+          <div class="card-header">
+            <span class="card-type-tag">{{ card.type }}</span>
+            <span class="card-time">{{ card.timestamp }}</span>
+          </div>
+          <h3>{{ card.title }}</h3>
+          <p class="card-content">{{ card.content }}</p>
+          
+          <div *ngIf="card.metadata" class="card-metadata">
+            <pre>{{ card.metadata | json }}</pre>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>

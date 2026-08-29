@@ -1,0 +1,58 @@
+{
+  "name": "goog-adk-a2ui-starter",
+  "version": "1.0.0",
+  "description": "Scaffolding CLI for Google ADK and A2UI (Agent-to-User Interface) applications",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "goog-adk-a2ui-starter": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "templates",
+    "README.md",
+    "architecture.md",
+    "plan.md"
+  ],
+  "scripts": {
+    "prepublishOnly": "npm run build",
+    "build": "tsc && npm run copy-templates",
+    "copy-templates": "node -e \"const fs = require('fs-extra'); fs.copySync('templates', 'dist/templates');\"",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit",
+    "test": "node dist/index.js --help"
+  },
+  "keywords": [
+    "goog-adk-a2ui-starter",
+    "google-adk",
+    "a2ui",
+    "agent",
+    "gemini",
+    "gemini-enterprise",
+    "scaffold",
+    "angular",
+    "react",
+    "python",
+    "cli"
+  ],
+  "author": "Google ADK Team",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@clack/prompts": "^0.8.2",
+    "commander": "^12.1.0",
+    "cross-spawn": "^7.0.6",
+    "fs-extra": "^11.2.0",
+    "picocolors": "^1.1.1"
+  },
+  "devDependencies": {
+    "@types/cross-spawn": "^6.0.6",
+    "@types/fs-extra": "^11.0.4",
+    "@types/node": "^20.14.9",
+    "tsx": "^4.19.0",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

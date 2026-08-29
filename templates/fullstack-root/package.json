@@ -1,0 +1,12 @@
+{
+  "name": "{{PROJECT_NAME}}",
+  "version": "0.1.0",
+  "description": "Full-Stack Google ADK & A2UI Application ({{FRONTEND_TYPE}} + Python)",
+  "private": true,
+  "scripts": {
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev:backend": "cd backend && uv run uvicorn src.server:app --reload --port 8000",
+    "install:all": "cd frontend && npm install && cd ../backend && uv sync",
+    "test": "cd backend && uv run pytest"
+  }
+}

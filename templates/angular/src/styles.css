@@ -1,0 +1,29 @@
+/* Global Styles for A2UI Angular App */
+:root {
+  --font-family-sans: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-mono: 'Roboto Mono', monospace;
+  --color-bg: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-hover: #334155;
+  --color-border: #334155;
+  --color-primary: #38bdf8;
+  --color-primary-dark: #0284c7;
+  --color-text: #f8fafc;
+  --color-text-muted: #94a3b8;
+  --color-accent: #818cf8;
+  --color-success: #34d399;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-family-sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
