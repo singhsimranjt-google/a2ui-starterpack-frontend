@@ -1,39 +1,30 @@
-"""Enterprise Tool Definitions & Grounding Connectors for Gemini Enterprise."""
+"""Tool definitions for Gemini Enterprise / Google ADK Agent."""
 
-from typing import Dict, Any, List, Callable
-from pydantic import BaseModel
+from typing import Any, Dict
 
-class GEToolMetadata(BaseModel):
-    """Metadata describing a Gemini Enterprise Tool."""
-    name: str
-    description: str
-    parameters: Dict[str, Any]
-
-
-def query_enterprise_knowledge(query: str) -> Dict[str, Any]:
-    """Queries Enterprise Datastores and Document Search."""
+def get_agent_capabilities(scope: str = "all") -> Dict[str, Any]:
+    """Retrieves the official system capabilities, components, and supported A2UI v0.9.1 features.
+    
+    Args:
+        scope: The scope of capabilities to retrieve (e.g. 'all', 'ui', 'reasoning').
+        
+    Returns:
+        A dictionary containing capabilities, supported widgets, and catalog version.
+    """
     return {
         "status": "success",
-        "query": query,
-        "citation": {
-            "source_title": "Enterprise Knowledge Base v4.2",
-            "uri": "https://enterprise.internal/docs/operations",
-            "snippet": f"Grounding data extracted from internal secure datastore for: '{query}'."
+        "scope": scope,
+        "catalog_version": "v0.9.1",
+        "capabilities": [
+            "Dynamic Material Card generation & streaming",
+            "Rich interactive buttons and event dispatching",
+            "Multi-column responsive layouts with MaterialColumn & MaterialRow",
+            "Material UI icons (heart, favorite, thumb_up, verified) and visual badges",
+            "Two-way state binding and form input processing"
+        ],
+        "highlights": {
+            "developer_experience": "Instant scaffolding with zero external CLI dependencies",
+            "enterprise_ready": "Gemini 2.5 Flash / Pro reasoning engine integration",
+            "ui_catalog": "Material Design v0.9.1 specification"
         }
     }
-
-
-def execute_compliance_audit(resource_id: str) -> Dict[str, Any]:
-    """Runs enterprise policy and compliance checks."""
-    return {
-        "resource_id": resource_id,
-        "status": "PASSED",
-        "policies_checked": ["SOC2", "ISO27001", "HIPAA", "GDPR"],
-        "audit_trace_id": "aud-98242"
-    }
-
-
-GE_TOOLS_REGISTRY: Dict[str, Callable[..., Any]] = {
-    "query_enterprise_knowledge": query_enterprise_knowledge,
-    "execute_compliance_audit": execute_compliance_audit,
-}

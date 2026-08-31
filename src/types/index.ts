@@ -4,12 +4,20 @@ export type FrontendFramework = 'angular' | 'react';
 
 export type PythonRendererType = 'adk-a2ui' | 'gemini-enterprise';
 
+export interface EnvConfig {
+  geminiApiKey?: string;
+  useVertexAi?: boolean;
+  gcpProject?: string;
+  gcpLocation?: string;
+}
+
 export interface ProjectConfig {
   projectType: ProjectType;
   frontendFramework?: FrontendFramework;
   pythonRendererType?: PythonRendererType;
   projectName: string;
   targetDir: string;
+  envConfig?: EnvConfig;
 }
 
 export interface PrerequisiteRequirement {

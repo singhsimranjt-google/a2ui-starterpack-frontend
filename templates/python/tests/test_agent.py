@@ -1,24 +1,20 @@
-"""Tests for Google ADK Agent."""
+"""Tests for Google ADK & A2UI Weather Agent."""
 
-from src.agent import ADKAgent
-from src.config import config
-from src.tools import AVAILABLE_TOOLS, search_knowledge_base, query_analytics_metrics
-from src.agent_executor import AgentExecutor
+import pytest
+from weather_agent.agent import root_agent
+from weather_agent.config import config
+from weather_agent.tools import get_current_weather
+
 
 def test_agent_initialization():
-    agent = ADKAgent()
-    assert agent.model_name == "gemini-2.5-flash"
-    assert agent.agent_name == "{{PROJECT_TITLE}}"
+    assert root_agent is not None
+    assert root_agent.name == config.agent_id
+    assert root_agent.model == config.gemini_model
 
-def test_agent_execute_intent():
-    agent = ADKAgent()
-    widgets = agent.execute_intent("Test query")
-    assert len(widgets) >= 2
-    assert widgets[0].type == "metric_card"
-    assert widgets[1].type == "action_panel"
 
 def test_tools():
-    search_res = search_knowledge_base("analytics")
-    assert search_res["status"] == "success"
-    metrics_res = query_analytics_metrics("7d")
-    assert metrics_res["metrics"]["success_rate"] > 0.9
+    weather = get_current_weather("Delhi")
+    assert weather["status"] == "success"
+    assert weather["city"] == "Delhi"
+    assert "temperature" in weather
+    assert "condition" in weather

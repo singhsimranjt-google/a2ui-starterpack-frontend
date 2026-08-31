@@ -1,6 +1,12 @@
-# {{PROJECT_TITLE}} (Angular A2UI Client)
+# {{PROJECT_TITLE}} (Angular A2UI Application)
 
-This is a standalone Angular frontend application built to render dynamic **Agent-to-User Interface (A2UI)** schemas emitted by Google ADK reasoning agents.
+This project is a standalone **Angular** client configured to render streaming **Material A2UI v0.9.1** component surfaces from Google ADK agents.
+
+## Features
+- **Material UI Catalog v0.9.1**: Renders `MaterialCard`, `MaterialColumn`, `MaterialRow`, `MaterialText`, `MaterialIcon`, and `MaterialButton`.
+- **Signal Reactivity**: Uses Angular `signal()` and `computed()` for responsive, low-latency UI updates.
+- **Interactive Action Loop**: Dispatches button click events with context prompts back to the Google ADK agent.
+- **Pre-Built Flow**: Conversational flow supporting greetings and "What are your capabilities?" Material Card generation.
 
 ## Getting Started
 
@@ -9,16 +15,8 @@ This is a standalone Angular frontend application built to render dynamic **Agen
 npm install
 ```
 
-### 2. Run the Development Server
+### 2. Start Development Server
 ```bash
 npm start
-# or: npx ng serve
 ```
-
-Navigate to `http://localhost:4200/`. The application will automatically reload if you change any of the source files.
-
-### 3. Build for Production
-```bash
-npm run build
-```
-The build artifacts will be stored in the `dist/` directory.
+Navigate to `http://localhost:4200/` in your browser.

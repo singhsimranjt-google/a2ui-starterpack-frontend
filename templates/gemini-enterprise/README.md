@@ -1,31 +1,33 @@
-# {{PROJECT_TITLE}} (Gemini Enterprise Agent & Renderer)
+# {{PROJECT_TITLE}} (Gemini Enterprise / Google ADK Agent)
 
-This project contains Python backend code for **Gemini Enterprise (GE)** integration. Because Gemini Enterprise natively renders cards, widgets, and enterprise UI actions within its portal and extensions, only Python agent and custom renderer code is generated.
+This project contains the Python agent implementation for **Gemini Enterprise** with **Material A2UI v0.9.1** card rendering.
 
-## Features
-- **Native GE Action Cards**: Generates Gemini Enterprise formatted action buttons and verification badges.
-- **Enterprise Grounding & Citations**: Pre-structured citation formats for enterprise datastores.
-- **`uv` Package Management**: Fast, reproducible Python dependency resolution.
+## Architecture
+- `src/agent.py`: Core agent reasoning loop, conversation router, and Material A2UI schema builder.
+- `src/config.py`: Environment configuration and Gemini model selector (`gemini-2.5-flash`).
+- `src/prompt.py`: System prompt, role instructions, and Material v0.9.1 schema guidelines.
+- `src/tools.py`: Tool definitions (e.g. `get_agent_capabilities`).
+- `pyproject.toml`: Modern Python project specification (managed with `uv`).
 
-## Getting Started
+## Quick Start
 
 ### 1. Configure Environment
 ```bash
 cp .env.example .env
-# Set your GEMINI_API_KEY and GCP Project credentials
+# Edit .env and set GEMINI_API_KEY (optional for local deterministic mode)
 ```
 
-### 2. Sync Dependencies with `uv`
+### 2. Install & Sync Dependencies
 ```bash
 uv sync
 ```
 
-### 3. Run Sample Agent & Renderer
+### 3. Run Interactive Agent
 ```bash
 uv run python src/agent.py
 ```
 
-### 4. Run Pytest Suite
+### 4. Run Test Suite
 ```bash
 uv run pytest
 ```

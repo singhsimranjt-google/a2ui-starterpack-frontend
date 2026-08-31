@@ -1,7 +1,7 @@
 import * as p from '@clack/prompts';
 import path from 'path';
 import pc from 'picocolors';
-import { ProjectConfig, ProjectType, FrontendFramework, PythonRendererType } from '../types';
+import { ProjectConfig, ProjectType, FrontendFramework, PythonRendererType, EnvConfig } from '../types';
 import { validateProjectName, sanitizeProjectName, isDirectoryEmpty } from '../utils/validation';
 
 export async function promptProjectConfig(): Promise<ProjectConfig | null> {
@@ -119,11 +119,71 @@ export async function promptProjectConfig(): Promise<ProjectConfig | null> {
     }
   }
 
+  // 6. Environment Variables (if Python or Fullstack)
+  let envConfig: EnvConfig | undefined;
+  if (projectType === 'python' || projectType === 'fullstack') {
+    const shouldConfigureEnv = await p.confirm({
+      message: 'Configure environment variables (.env)?',
+      initialValue: true
+    });
+
+    if (!p.isCancel(shouldConfigureEnv) && shouldConfigureEnv) {
+      const geminiApiKeyInput = await p.text({
+        message: 'GEMINI_API_KEY (leave empty to use default placeholder):',
+        placeholder: 'your-gemini-api-key-here',
+        defaultValue: ''
+      });
+
+      if (p.isCancel(geminiApiKeyInput)) {
+        p.cancel('Scaffolding cancelled.');
+        return null;
+      }
+
+      const gcpProjectInput = await p.text({
+        message: 'GOOGLE_CLOUD_PROJECT (leave empty to use default placeholder):',
+        placeholder: 'your-gcp-project-id',
+        defaultValue: ''
+      });
+
+      if (p.isCancel(gcpProjectInput)) {
+        p.cancel('Scaffolding cancelled.');
+        return null;
+      }
+
+      const gcpLocationInput = await p.text({
+        message: 'GOOGLE_CLOUD_LOCATION (leave empty to use default "us-central1"):',
+        placeholder: 'us-central1',
+        defaultValue: 'us-central1'
+      });
+
+      if (p.isCancel(gcpLocationInput)) {
+        p.cancel('Scaffolding cancelled.');
+        return null;
+      }
+
+      envConfig = {
+        geminiApiKey: (geminiApiKeyInput as string).trim() || 'your-gemini-api-key-here',
+        gcpProject: (gcpProjectInput as string).trim() || 'your-gcp-project-id',
+        gcpLocation: (gcpLocationInput as string).trim() || 'us-central1',
+        useVertexAi: false
+      };
+    } else {
+      // Default placeholder values
+      envConfig = {
+        geminiApiKey: 'your-gemini-api-key-here',
+        gcpProject: 'your-gcp-project-id',
+        gcpLocation: 'us-central1',
+        useVertexAi: false
+      };
+    }
+  }
+
   return {
     projectType,
     frontendFramework,
     pythonRendererType,
     projectName,
-    targetDir
+    targetDir,
+    envConfig
   };
 }

@@ -1,25 +1,36 @@
-"""Tests for Gemini Enterprise Agent & Renderer."""
+"""Tests for Google ADK / Gemini Enterprise Agent."""
 
-from src.agent import GeminiEnterpriseAgent
-from src.config import ge_config
-from src.tools import query_enterprise_knowledge, execute_compliance_audit
-from src.ge_renderer import GeminiEnterpriseRenderer
+import pytest
+from src.agent import Agent
+from src.config import config
+from src.tools import get_agent_capabilities
 
-def test_ge_agent_initialization():
-    agent = GeminiEnterpriseAgent()
-    assert agent.model_name == "gemini-2.5-pro"
-    assert agent.project_name == "{{PROJECT_TITLE}}"
+@pytest.mark.asyncio
+async def test_agent_greeting():
+    agent = Agent()
+    res = await agent.generate_response("Hello!")
+    assert "Hello!" in res["text"]
+    assert res["a2ui"] is None
 
-def test_ge_workflow_execution():
-    agent = GeminiEnterpriseAgent()
-    card = agent.execute_enterprise_workflow("Test Enterprise Intent")
-    assert card.header.startswith("Enterprise Agent:")
-    assert len(card.badges) > 0
-    assert len(card.actions) > 0
-    assert card.actions[0].action_id == "DISPATCH_ENTERPRISE_JOB"
+@pytest.mark.asyncio
+async def test_agent_capabilities_card():
+    agent = Agent()
+    res = await agent.generate_response("What are your capabilities?")
+    assert res["a2ui"] is not None
+    assert len(res["a2ui"]) == 2
+    create_surface = res["a2ui"][0]["createSurface"]
+    assert "material_catalog.json" in create_surface["catalogId"]
+    
+    update_comps = res["a2ui"][1]["updateComponents"]
+    comps = update_comps["components"]
+    comp_types = [c["component"] for c in comps]
+    assert "MaterialCard" in comp_types
+    assert "MaterialText" in comp_types
+    assert "MaterialIcon" in comp_types
+    assert "MaterialButton" in comp_types
 
-def test_ge_tools():
-    kb_res = query_enterprise_knowledge("security policy")
-    assert kb_res["status"] == "success"
-    audit_res = execute_compliance_audit("res-101")
-    assert audit_res["status"] == "PASSED"
+def test_tools():
+    caps = get_agent_capabilities()
+    assert caps["status"] == "success"
+    assert caps["catalog_version"] == "v0.9.1"
+    assert len(caps["capabilities"]) >= 5

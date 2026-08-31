@@ -3,7 +3,7 @@
   "version": 1,
   "newProjectRoot": "projects",
   "projects": {
-    "{{PROJECT_NAME}}": {
+    "weather-agent-ui": {
       "projectType": "application",
       "schematics": {},
       "root": "",
@@ -13,7 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:application",
           "options": {
-            "outputPath": "dist/{{PROJECT_NAME}}",
+            "outputPath": "dist/weather-agent-ui",
             "index": "src/index.html",
             "browser": "src/main.ts",
             "polyfills": ["zone.js"],
@@ -45,15 +45,18 @@
           "builder": "@angular-devkit/build-angular:dev-server",
           "configurations": {
             "production": {
-              "buildTarget": "{{PROJECT_NAME}}:build:production"
+              "buildTarget": "weather-agent-ui:build:production"
             },
             "development": {
-              "buildTarget": "{{PROJECT_NAME}}:build:development"
+              "buildTarget": "weather-agent-ui:build:development"
             }
           },
           "defaultConfiguration": "development"
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }
