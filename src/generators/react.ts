@@ -18,7 +18,7 @@ export class ReactGenerator extends BaseGenerator {
   getNextSteps(targetDir: string, config: ProjectConfig): string[] {
     return [
       `cd ${config.projectName}`,
-      'npm install',
+      'npm install --legacy-peer-deps',
       'npm run dev',
       'Open http://localhost:5173 in your browser'
     ];

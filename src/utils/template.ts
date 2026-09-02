@@ -43,6 +43,11 @@ export function copyTemplateFiles(
       const srcPath = path.join(srcDir, entry.name);
       const destPath = path.join(destDir, entry.name);
 
+      const ignoreList = ['node_modules', 'dist', '.angular', '.vite', '__pycache__', '.venv', '.env'];
+      if (ignoreList.includes(entry.name)) {
+        continue;
+      }
+
       if (entry.isDirectory()) {
         fs.ensureDirSync(destPath);
         processDirectory(srcPath, destPath);

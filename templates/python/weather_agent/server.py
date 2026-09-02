@@ -25,7 +25,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-genai_client = Client(api_key=config.api_key) if config.api_key else None
+# genai_client = Client(api_key=config.api_key) if config.api_key else None
+try:
+    genai_client = Client()
+except Exception:
+    genai_client = None
 
 
 class PromptRequest(BaseModel):

@@ -30,6 +30,7 @@ uv run python src/agent.py
 ### 5. Run FastAPI Backend Server
 ```bash
 uv run uvicorn src.server:app --reload --port 8000
+uv run uvicorn weather_agent.server:app --reload --port 8000
 ```
 API Documentation will be available at `http://localhost:8000/docs`.
 

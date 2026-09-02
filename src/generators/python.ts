@@ -43,7 +43,7 @@ export class PythonGenerator extends BaseGenerator {
     return [
       `cd ${config.projectName}`,
       'uv sync',
-      'uv run uvicorn weather_agent.server:app --reload --port 8000  # Start API server'
+      'uv run uvicorn weather_agent.server:app --reload --port 8080  # Start API server'
     ];
   }
 }

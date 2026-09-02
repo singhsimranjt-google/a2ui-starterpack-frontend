@@ -29,7 +29,7 @@ export class AppComponent implements OnInit {
   messages = signal<ChatMessage[]>([]);
 
   private readonly rendererService = inject(A2uiRendererService);
-  private readonly apiUrl = 'http://localhost:8000/api/agent/chat';
+  private readonly apiUrl = 'http://127.0.0.1:8080/api/agent/chat';
 
   ngOnInit() {
     this.sendInitialGreeting();
@@ -57,7 +57,7 @@ export class AppComponent implements OnInit {
       this.messages.set([
         {
           sender: 'agent',
-          text: '⚠️ Could not connect to Weather Agent at `http://localhost:8000`. Please start the backend service.',
+          text: '⚠️ Could not connect to Weather Agent at `http://127.0.0.1:8080/api/agent/chat`. Please start the backend service.',
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
@@ -103,7 +103,7 @@ export class AppComponent implements OnInit {
         ...prev,
         {
           sender: 'agent',
-          text: `⚠️ Could not reach Weather Agent at \`http://localhost:8000\`. Please ensure the backend is running.`,
+          text: `⚠️ Could not reach Weather Agent at \`http://127.0.0.1:8080\`. Please ensure the backend is running.`,
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);

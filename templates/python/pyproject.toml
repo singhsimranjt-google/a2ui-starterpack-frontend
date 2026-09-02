@@ -1,5 +1,5 @@
 [project]
-name = "{{PROJECT_NAME}}"
+name = "weather_agent"
 version = "0.1.0"
 description = "Google ADK & A2UI Agent Application"
 readme = "README.md"

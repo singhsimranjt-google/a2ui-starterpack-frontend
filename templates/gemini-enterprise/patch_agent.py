@@ -1,50 +1,10 @@
-"""Google ADK & Gemini Enterprise Agent with Material A2UI v0.9.1 rendering."""
-
-import asyncio
-import json
-import os
 import re
-import sys
-from typing import Any, Dict, List, Optional
 
-# Ensure project root is in python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+with open("src/agent.py", "r") as f:
+    code = f.read()
 
-try:
-    from google.genai import types, Client
-    GENAI_AVAILABLE = True
-except ImportError:
-    GENAI_AVAILABLE = False
-    types = None  # type: ignore
-    Client = None  # type: ignore
-
-try:
-    from src.config import config
-    from src.prompt import ROLE_DESCRIPTION, UI_DESCRIPTION
-    from src.tools import get_agent_capabilities
-except ImportError:
-    from config import config
-    from prompt import ROLE_DESCRIPTION, UI_DESCRIPTION
-    from tools import get_agent_capabilities
-
-_TAG_PATTERN = re.compile(r"<a2ui-json>(.*?)</a2ui-json>", re.DOTALL)
-
-
-class Agent:
-    """Production-ready Google ADK / Gemini Enterprise Agent."""
-
-    def __init__(self):
-        self.config = config
-        self.client: Optional[Any] = None
-        if GENAI_AVAILABLE and config.api_key:
-            if config.use_vertexai and config.gcp_project:
-                self.client = Client(vertexai=True, project=config.gcp_project, location=config.gcp_region)
-            elif config.api_key:
-                self.client = Client(api_key=config.api_key)
-        self.system_instruction = f"{ROLE_DESCRIPTION}\n\n{UI_DESCRIPTION}"
-
-    def build_mock_capabilities_card(self, surface_id: str = "capabilities-surface-01") -> List[Dict[str, Any]]:
-        """Constructs a deterministic, validated Material A2UI v0.9.1 capabilities card."""
+new_func = """def build_mock_capabilities_card(self, surface_id: str = "capabilities-surface-01") -> List[Dict[str, Any]]:
+        \"\"\"Constructs a deterministic, validated Material A2UI v0.9.1 capabilities card.\"\"\"
         caps_data = get_agent_capabilities()
         return [
             {
@@ -208,89 +168,12 @@ class Agent:
                 }
             }
         ]
+"""
 
+# Replace exactly from def build_mock_capabilities_card to the line before async def generate_response
+import re
+code = re.sub(r'def build_mock_capabilities_card.*?\]\n\n', new_func + '\n\n', code, flags=re.DOTALL)
 
-    async def generate_response(self, user_input: str) -> Dict[str, Any]:
-        """Generates conversational responses and Material A2UI v0.9.1 components."""
-        cleaned_input = user_input.strip().lower()
+with open("src/agent.py", "w") as f:
+    f.write(code)
 
-        # Direct flow handler for local/offline execution or fallback
-        if any(greet in cleaned_input for greet in ["hi", "hello", "hey", "greetings"]):
-            return {
-                "text": "Hello! 👋 I am your **Google ADK & A2UI Assistant**. How can I help you today? You can ask about my capabilities to see interactive A2UI cards in action!",
-                "a2ui": None
-            }
-
-        if "capabilit" in cleaned_input or "what can you do" in cleaned_input:
-            a2ui_payload = self.build_mock_capabilities_card()
-            return {
-                "text": "Here is an overview of my core capabilities rendered directly via the Material A2UI v0.9.1 catalog:",
-                "a2ui": a2ui_payload
-            }
-
-        # If API key is available, leverage Gemini 2.5 Flash
-        if self.client:
-            try:
-                response = self.client.models.generate_content(
-                    model=self.config.gemini_model,
-                    contents=user_input,
-                    config=types.GenerateContentConfig(
-                        system_instruction=self.system_instruction,
-                        temperature=0.2,
-                        max_output_tokens=4096,
-                    )
-                )
-                raw_text = response.text or ""
-                tag_match = _TAG_PATTERN.search(raw_text)
-                a2ui_data = None
-                clean_text = raw_text
-
-                if tag_match:
-                    try:
-                        a2ui_data = json.loads(tag_match.group(1).strip())
-                        clean_text = _TAG_PATTERN.sub("", raw_text).strip()
-                    except json.JSONDecodeError:
-                        a2ui_data = None
-
-                return {"text": clean_text, "a2ui": a2ui_data}
-            except Exception as e:
-                # Fallback to local deterministic response
-                return {
-                    "text": f"Processed query with local reasoning engine: '{user_input}'. Ask 'what are your capabilities?' to see the Material A2UI card.",
-                    "a2ui": None
-                }
-
-        # Fallback response
-        return {
-            "text": f"Received your message: '{user_input}'. Tip: Ask 'what are your capabilities?' to see a Material A2UI card rendered in real-time!",
-            "a2ui": None
-        }
-
-
-async def main():
-    """CLI interactive test runner for the agent."""
-    print("=" * 70)
-    print(f"🤖 {config.agent_name} (Model: {config.gemini_model})")
-    print("Google ADK & Material A2UI v0.9.1 Runner")
-    print("=" * 70)
-
-    agent = Agent()
-
-    # Flow Step 1: User Greets
-    print("\n[Step 1] User: 'Hello!'")
-    res1 = await agent.generate_response("Hello!")
-    print(f"Agent: {res1['text']}")
-
-    # Flow Step 2: User asks for capabilities
-    print("\n[Step 2] User: 'What are your capabilities?'")
-    res2 = await agent.generate_response("What are your capabilities?")
-    print(f"Agent: {res2['text']}\n")
-    if res2['a2ui']:
-        print("<a2ui-json>")
-        print(json.dumps(res2['a2ui'], indent=2))
-        print("</a2ui-json>")
-    print("=" * 70)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

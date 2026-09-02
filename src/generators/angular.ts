@@ -18,7 +18,7 @@ export class AngularGenerator extends BaseGenerator {
   getNextSteps(targetDir: string, config: ProjectConfig): string[] {
     return [
       `cd ${config.projectName}`,
-      'npm install',
+      'npm install --legacy-peer-deps',
       'npm start',
       'Open http://localhost:4200 in your browser'
     ];

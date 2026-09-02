@@ -85,9 +85,9 @@ export class FullStackGenerator implements IGenerator {
     return [
       `cd ${config.projectName}`,
       '# Terminal 1: Start Backend Agent Server',
-      'cd backend && cp .env.example .env && uv sync && uv run uvicorn weather_agent.server:app --reload --port 8000',
+      'cd backend && cp .env.example .env && uv sync && uv run uvicorn weather_agent.server:app --reload --port 8080',
       '# Terminal 2: Start Frontend Client',
-      `cd frontend && npm install && ${isAngular ? 'npm start' : 'npm run dev'}`,
+      `cd frontend && npm install --legacy-peer-deps && ${isAngular ? 'npm start' : 'npm run dev'}`,
       '# Or install everything from root: npm run install:all'
     ];
   }
