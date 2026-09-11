@@ -1,0 +1,251 @@
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+/* Global Styles for Google Material 3 A2UI Angular App */
+:root {
+  /* Official Google Brand Colors */
+  --google-blue: #1a73e8;
+  --google-blue-dark: #1557b0;
+  --google-blue-light: #e8f0fe;
+  --google-blue-border: #d2e3fc;
+  --google-red: #ea4335;
+  --google-yellow: #f9ab00;
+  --google-green: #34a853;
+  --google-grey-900: #202124;
+  --google-grey-800: #3c4043;
+  --google-grey-700: #5f6368;
+  --google-grey-500: #9aa0a6;
+  --google-grey-300: #dadce0;
+  --google-grey-200: #e8eaed;
+  --google-grey-100: #f1f3f4;
+  --google-bg: #f8fafd;
+
+  /* Typography */
+  --font-family-sans: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family-mono: 'Roboto Mono', monospace;
+
+  /* A2UI Basic Catalog Design System Variables */
+  --a2ui-color-surface: #ffffff;
+  --a2ui-color-border: #e8eaed;
+  --a2ui-color-primary: #1a73e8;
+  --a2ui-color-on-background: #202124;
+  --a2ui-text-color-text: #202124;
+
+  /* Elevated Card Variables */
+  --a2ui-card-background: #ffffff;
+  --a2ui-card-border-radius: 24px;
+  --a2ui-card-border: 1px solid #e0e3e7;
+  --a2ui-card-box-shadow: 0 1px 3px 0 rgba(60, 64, 67, 0.1), 0 4px 12px 2px rgba(60, 64, 67, 0.06);
+
+  /* Spacing */
+  --a2ui-spacing-m: 16px;
+  --a2ui-column-gap: 16px;
+  --a2ui-row-gap: 12px;
+
+  /* Icons */
+  --a2ui-icon-size: 24px;
+  --a2ui-icon-color: #1a73e8;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--google-bg);
+  color: var(--google-grey-900);
+  font-family: var(--font-family-sans);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Ensure A2UI Elements Expand to Full Width */
+a2ui-v09-surface,
+a2ui-v09-component-host,
+a2ui-v09-card,
+a2ui-v09-column,
+a2ui-v09-row {
+  display: block;
+  width: 100%;
+}
+
+.a2ui-icon {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  color: var(--google-blue) !important;
+}
+
+.a2ui-text {
+  display: inline-block;
+  vertical-align: middle;
+  font-family: var(--font-family-sans);
+}
+
+.a2ui-text em {
+  font-style: normal;
+  color: var(--google-grey-700);
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.a2ui-text.h1 h1 {
+  font-size: 46px;
+  font-weight: 800;
+  color: var(--google-blue);
+  margin: 0;
+  line-height: 1.1;
+  letter-spacing: -0.5px;
+  text-align: center;
+}
+
+.a2ui-text.h2 h2 {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--google-grey-900);
+  margin: 0;
+  letter-spacing: -0.2px;
+}
+
+.a2ui-text.h3 h3 {
+  font-size: 18px;
+  font-weight: 500;
+  color: var(--google-grey-700);
+  margin: 0;
+  text-align: center;
+}
+
+.a2ui-text.h4 h4 {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--google-grey-900);
+  margin: 4px 0 0 0;
+  text-align: center;
+}
+
+.a2ui-text.caption {
+  font-size: 13.5px;
+  color: var(--google-grey-700);
+  font-weight: 500;
+}
+
+/* Markdown Typography */
+.markdown-content p {
+  margin-bottom: 8px;
+}
+
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content strong {
+  font-weight: 700;
+  color: inherit;
+}
+
+.markdown-content em {
+  font-style: italic;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 22px;
+  margin: 6px 0 10px 0;
+}
+
+.markdown-content li {
+  margin-bottom: 4px;
+}
+
+.markdown-content code {
+  font-family: var(--font-family-mono);
+  background: rgba(0, 0, 0, 0.06);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.message-bubble-wrapper.user .markdown-content code {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.markdown-content pre {
+  background: var(--google-grey-100);
+  padding: 10px 14px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 8px 0;
+}
+
+.markdown-content pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* Style the internal A2UI fallback component directly */
+.a2ui-text-field-container input {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  padding: 12px !important;
+  border: 1px solid #000000 !important;
+  border-radius: 4px !important;
+  font-size: 16px !important;
+  color-scheme: light !important;
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.a2ui-text-field-container label {
+  color: #333333 !important;
+  font-weight: bold;
+  font-size: 12px;
+  font-family: sans-serif;
+  margin-bottom: 4px;
+  display: block;
+}
+
+/* Sleek Modern Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #dadce0;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #bdc1c6;
+}
+
+/* Style the native A2UI DateTimeInput component */
+.a2ui-date-time-input {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  padding: 11px !important;
+  border: 1px solid #000000 !important;
+  border-radius: 4px !important;
+  font-size: 16px !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.a2ui-date-time-label {
+  color: #333333 !important;
+  font-weight: bold !important;
+  font-size: 12px !important;
+  font-family: sans-serif !important;
+  margin-bottom: 4px !important;
+  display: block;
+}

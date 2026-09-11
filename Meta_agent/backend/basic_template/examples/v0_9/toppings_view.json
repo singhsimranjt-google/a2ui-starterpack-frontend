@@ -1,0 +1,80 @@
+{
+  "updateComponents": {
+    "surfaceId": "sur_456",
+    "components": [
+      {
+        "component": "Column",
+        "id": "root",
+        "children": [
+          "toppings_card"
+        ]
+      },
+      {
+        "component": "Card",
+        "id": "toppings_card",
+        "child": "toppings_content"
+      },
+      {
+        "component": "Column",
+        "id": "toppings_content",
+        "children": [
+          "toppings_header",
+          "topping_cheese",
+          "topping_mushrooms",
+          "topping_onions",
+          "continue_btn"
+        ]
+      },
+      {
+        "component": "Text",
+        "id": "toppings_header",
+        "text": "Choose your toppings for ${result.pizza_name}"
+      },
+      {
+        "component": "CheckBox",
+        "id": "topping_cheese",
+        "label": "Extra Cheese",
+        "value": {
+          "path": "/application/toppings/extra_cheese"
+        }
+      },
+      {
+        "component": "CheckBox",
+        "id": "topping_mushrooms",
+        "label": "Mushrooms",
+        "value": {
+          "path": "/application/toppings/mushrooms"
+        }
+      },
+      {
+        "component": "CheckBox",
+        "id": "topping_onions",
+        "label": "Onions",
+        "value": {
+          "path": "/application/toppings/onions"
+        }
+      },
+      {
+        "component": "Button",
+        "id": "continue_btn",
+        "child": "continue_btn_txt",
+        "action": {
+          "event": {
+            "name": "show_order_form",
+            "context": {
+              "pizza_name": "${result.pizza_name}",
+              "toppings": {
+                "path": "/application/toppings"
+              }
+            }
+          }
+        }
+      },
+      {
+        "component": "Text",
+        "id": "continue_btn_txt",
+        "text": "Continue"
+      }
+    ]
+  }
+}

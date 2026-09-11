@@ -1,0 +1,16 @@
+:root {
+  --primary-color: #1a73e8;
+  --bg-color: #f0f2f5;
+  --card-bg: #ffffff;
+  --text-main: #333333;
+  --bubble-user: var(--primary-color);
+  --bubble-agent: #f1f3f4;
+}
+
+body {
+  font-family: 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--bg-color);
+  margin: 0;
+  padding: 20px;
+  color: var(--text-main);
+}

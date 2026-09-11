@@ -1,0 +1,116 @@
+{
+  "updateComponents": {
+    "surfaceId": "sur_789",
+    "components": [
+      {
+        "component": "Column",
+        "id": "root",
+        "children": [
+          "order_card"
+        ]
+      },
+      {
+        "component": "Card",
+        "id": "order_card",
+        "child": "order_form_content"
+      },
+      {
+        "component": "Column",
+        "id": "order_form_content",
+        "children": [
+          "form_header",
+          "toppings_summary",
+          "name_input",
+          "address_input",
+          "quantity_input",
+          "button_row"
+        ]
+      },
+      {
+        "component": "Text",
+        "id": "form_header",
+        "text": "Order form for ${result.pizza_name}"
+      },
+      {
+        "component": "Text",
+        "id": "toppings_summary",
+        "text": "Toppings: ${result.toppings}"
+      },
+      {
+        "component": "TextField",
+        "id": "name_input",
+        "label": "Your Name",
+        "value": {
+          "path": "/application/customer_name"
+        }
+      },
+      {
+        "component": "TextField",
+        "id": "address_input",
+        "label": "Delivery Address",
+        "value": {
+          "path": "/application/address"
+        }
+      },
+      {
+        "component": "TextField",
+        "id": "quantity_input",
+        "label": "Number of Pizzas",
+        "value": {
+          "path": "/application/quantity"
+        }
+      },
+      {
+        "component": "Row",
+        "id": "button_row",
+        "children": [
+          "cancel_btn",
+          "order_btn"
+        ]
+      },
+      {
+        "component": "Button",
+        "id": "cancel_btn",
+        "child": "cancel_btn_txt",
+        "action": {
+          "event": {
+            "name": "cancel_order"
+          }
+        }
+      },
+      {
+        "component": "Text",
+        "id": "cancel_btn_txt",
+        "text": "Cancel Order"
+      },
+      {
+        "component": "Button",
+        "id": "order_btn",
+        "child": "order_btn_txt",
+        "action": {
+          "event": {
+            "name": "place_order",
+            "context": {
+              "pizza_name": "${result.pizza_name}",
+              "toppings": "${result.toppings}",
+              "customer_name": {
+                "path": "/application/customer_name"
+              },
+              "address": {
+                "path": "/application/address"
+              },
+              "quantity": {
+                "path": "/application/quantity"
+              }
+            }
+          }
+        }
+      },
+      {
+        "component": "Text",
+        "id": "order_btn_txt",
+        "text": "Place Order"
+      }
+    ]
+  }
+}

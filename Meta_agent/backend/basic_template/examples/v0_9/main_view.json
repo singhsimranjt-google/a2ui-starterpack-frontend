@@ -1,0 +1,184 @@
+{
+  "updateComponents": {
+    "surfaceId": "sur_123",
+    "components": [
+      {
+        "component": "Column",
+        "id": "root",
+        "children": [
+          "header_text",
+          "margherita_card",
+          "pepperoni_card",
+          "vegetarian_card"
+        ]
+      },
+      {
+        "component": "Text",
+        "id": "header_text",
+        "text": "Welcome to Pizza Order!"
+      },
+      {
+        "component": "Card",
+        "id": "margherita_card",
+        "child": "margherita_content"
+      },
+      {
+        "component": "Column",
+        "id": "margherita_content",
+        "children": [
+          "margherita_img",
+          "margherita_name",
+          "margherita_desc",
+          "margherita_price",
+          "margherita_order_btn"
+        ]
+      },
+      {
+        "component": "Image",
+        "id": "margherita_img",
+        "url": "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?q=80&w=500&auto=format&fit=crop"
+      },
+      {
+        "component": "Text",
+        "id": "margherita_name",
+        "text": "Margherita"
+      },
+      {
+        "component": "Text",
+        "id": "margherita_desc",
+        "text": "Classic delight with 100% real mozzarella cheese"
+      },
+      {
+        "component": "Text",
+        "id": "margherita_price",
+        "text": "$12.99"
+      },
+      {
+        "component": "Button",
+        "id": "margherita_order_btn",
+        "child": "margherita_order_btn_txt",
+        "action": {
+          "event": {
+            "name": "show_toppings_form",
+            "context": {
+              "pizza_name": "Margherita"
+            }
+          }
+        }
+      },
+      {
+        "component": "Text",
+        "id": "margherita_order_btn_txt",
+        "text": "Order"
+      },
+      {
+        "component": "Card",
+        "id": "pepperoni_card",
+        "child": "pepperoni_content"
+      },
+      {
+        "component": "Column",
+        "id": "pepperoni_content",
+        "children": [
+          "pepperoni_img",
+          "pepperoni_name",
+          "pepperoni_desc",
+          "pepperoni_price",
+          "pepperoni_order_btn"
+        ]
+      },
+      {
+        "component": "Image",
+        "id": "pepperoni_img",
+        "url": "https://images.unsplash.com/photo-1628840042765-356cda07504e?q=80&w=500&auto=format&fit=crop"
+      },
+      {
+        "component": "Text",
+        "id": "pepperoni_name",
+        "text": "Pepperoni"
+      },
+      {
+        "component": "Text",
+        "id": "pepperoni_desc",
+        "text": "A classic favorite with spicy pepperoni"
+      },
+      {
+        "component": "Text",
+        "id": "pepperoni_price",
+        "text": "$14.99"
+      },
+      {
+        "component": "Button",
+        "id": "pepperoni_order_btn",
+        "child": "pepperoni_order_btn_txt",
+        "action": {
+          "event": {
+            "name": "show_toppings_form",
+            "context": {
+              "pizza_name": "Pepperoni"
+            }
+          }
+        }
+      },
+      {
+        "component": "Text",
+        "id": "pepperoni_order_btn_txt",
+        "text": "Order"
+      },
+      {
+        "component": "Card",
+        "id": "vegetarian_card",
+        "child": "vegetarian_content"
+      },
+      {
+        "component": "Column",
+        "id": "vegetarian_content",
+        "children": [
+          "vegetarian_img",
+          "vegetarian_name",
+          "vegetarian_desc",
+          "vegetarian_price",
+          "vegetarian_order_btn"
+        ]
+      },
+      {
+        "component": "Image",
+        "id": "vegetarian_img",
+        "url": "https://images.unsplash.com/photo-1513104890138-7c749659a591?q=80&w=500&auto=format&fit=crop"
+      },
+      {
+        "component": "Text",
+        "id": "vegetarian_name",
+        "text": "Vegetarian"
+      },
+      {
+        "component": "Text",
+        "id": "vegetarian_desc",
+        "text": "Packed with fresh veggies like onions, peppers, and olives"
+      },
+      {
+        "component": "Text",
+        "id": "vegetarian_price",
+        "text": "$15.99"
+      },
+      {
+        "component": "Button",
+        "id": "vegetarian_order_btn",
+        "child": "vegetarian_order_btn_txt",
+        "action": {
+          "event": {
+            "name": "show_toppings_form",
+            "context": {
+              "pizza_name": "Vegetarian"
+            }
+          }
+        }
+      },
+      {
+        "component": "Text",
+        "id": "vegetarian_order_btn_txt",
+        "text": "Order"
+      }
+    ]
+  }
+}
