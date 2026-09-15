@@ -1,0 +1,131 @@
+{
+  "updateComponents": {
+    "surfaceId": "sur_456",
+    "components": [
+      {
+        "component": "Column",
+        "id": "root",
+        "children": [
+          "customize_card"
+        ]
+      },
+      {
+        "component": "Card",
+        "id": "customize_card",
+        "child": "customize_content"
+      },
+      {
+        "component": "Column",
+        "id": "customize_content",
+        "children": [
+          "form_header",
+          "crust_picker",
+          "extras_picker",
+          "size_picker",
+          "confirm_btn"
+        ]
+      },
+      {
+        "component": "Text",
+        "id": "form_header",
+        "text": "Customize your ${result.pizza_name}"
+      },
+      {
+        "component": "ChoicePicker",
+        "id": "crust_picker",
+        "label": "Choose a Crust",
+        "variant": "mutuallyExclusive",
+        "options": [
+          {
+            "label": "Thin Crust",
+            "value": "thin"
+          },
+          {
+            "label": "Hand Tossed",
+            "value": "hand_tossed"
+          },
+          {
+            "label": "Deep Dish",
+            "value": "deep_dish"
+          }
+        ],
+        "value": {
+          "path": "/application/crust"
+        }
+      },
+      {
+        "component": "ChoicePicker",
+        "id": "extras_picker",
+        "label": "Add Extras",
+        "variant": "multipleSelection",
+        "options": [
+          {
+            "label": "Extra Cheese",
+            "value": "extra_cheese"
+          },
+          {
+            "label": "Garlic Dip",
+            "value": "garlic_dip"
+          },
+          {
+            "label": "Chilli Flakes",
+            "value": "chilli_flakes"
+          }
+        ],
+        "value": {
+          "path": "/application/extras"
+        }
+      },
+      {
+        "component": "ChoicePicker",
+        "id": "size_picker",
+        "label": "Pizza Size",
+        "variant": "mutuallyExclusive",
+        "options": [
+          {
+            "label": "Small (8 inch)",
+            "value": "small"
+          },
+          {
+            "label": "Medium (12 inch)",
+            "value": "medium"
+          },
+          {
+            "label": "Large (16 inch)",
+            "value": "large"
+          }
+        ],
+        "value": {
+          "path": "/application/size"
+        }
+      },
+      {
+        "component": "Button",
+        "id": "confirm_btn",
+        "child": "confirm_btn_txt",
+        "action": {
+          "event": {
+            "name": "save_customization",
+            "context": {
+              "pizza_name": "${result.pizza_name}",
+              "crust": {
+                "path": "/application/crust"
+              },
+              "extras": {
+                "path": "/application/extras"
+              },
+              "size": {
+                "path": "/application/size"
+              }
+            }
+          }
+        }
+      },
+      {
+        "component": "Text",
+        "id": "confirm_btn_txt",
+        "text": "Save Customization"
+      }
+    ]
+  }
+}

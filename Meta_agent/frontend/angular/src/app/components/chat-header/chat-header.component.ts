@@ -97,6 +97,6 @@ import { AgentStatus } from '../../models/chat.types';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class ChatHeaderComponent {
-  title = input<string>('Weather Agent UI');
+  title = input<string>('Agent UI');
   status = input<AgentStatus>('connected');
 }

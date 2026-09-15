@@ -1,4 +1,4 @@
-import { Component, ChangeDetectionStrategy } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -8,7 +8,7 @@ import { CommonModule } from '@angular/common';
   template: `
     <div class="message-row agent">
       <div class="sender-info">
-        <span class="sender-name">Weather Agent</span>
+        <span class="sender-name">{{ name() }}</span>
         <span class="thinking-label">Thinking...</span>
       </div>
 
@@ -151,4 +151,6 @@ import { CommonModule } from '@angular/common';
   `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class AgentLoaderComponent {}
+export class AgentLoaderComponent {
+  name = input<string>('Agent');
+}

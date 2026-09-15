@@ -8,7 +8,7 @@
       <div *ngFor="let msg of messages()" class="message-row" [ngClass]="msg.sender">
         <!-- Metadata: Sender and Timestamp -->
         <div class="sender-info">
-          <span class="sender-name">{{ msg.sender === 'user' ? 'You' : 'Weather Agent' }}</span>
+          <span class="sender-name">{{ msg.sender === 'user' ? 'You' : title() }}</span>
           <span class="time-stamp">{{ msg.timestamp }}</span>
         </div>
 
@@ -44,7 +44,7 @@
       </div>
 
       <!-- Agent Thinking / Loading Component -->
-      <app-agent-loader *ngIf="agentStatus() === 'executing'"></app-agent-loader>
+      <app-agent-loader *ngIf="agentStatus() === 'executing'" [name]="title()"></app-agent-loader>
     </div>
 
     <!-- User Input Component -->

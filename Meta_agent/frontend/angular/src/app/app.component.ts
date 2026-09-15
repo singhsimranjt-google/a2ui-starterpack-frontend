@@ -24,17 +24,38 @@ import { AgentLoaderComponent } from './components/agent-loader/agent-loader.com
   styleUrls: ['./app.component.css'],
 })
 export class AppComponent implements OnInit {
-  title = signal('Clinic Triage Agent');
+  title = signal('Agent UI');
   agentStatus = signal<AgentStatus>('connected');
   messages = signal<ChatMessage[]>([]);
 
   private readonly rendererService = inject(A2uiRendererService);
   private readonly apiUrl = 'http://127.0.0.1:8080/api/agent/chat';
+  private readonly infoUrl = 'http://127.0.0.1:8080/api/agent/info';
   private readonly sessionId = crypto.randomUUID();
 
   ngOnInit() {
+    this.loadAgentInfo();
     this.sendInitialGreeting();
   }
+
+  /**
+   * Pull the agent's display name from the backend so this shell stays generic.
+   * Deliberately NOT awaited in ngOnInit — the greeting must not wait on it.
+   */
+  private async loadAgentInfo() {
+    try {
+      const res = await fetch(this.infoUrl);
+      if (!res.ok) return;              // older agent w/o the endpoint -> keep default
+      const info = await res.json();
+      if (info?.name) {
+        this.title.set(info.name);
+        document.title = info.name;     // browser tab
+      }
+    } catch {
+      // Backend not up yet. Keep the placeholder rather than breaking the shell.
+    }
+  }
+
 
   /**
    * Request initial greeting from the backend agent.
@@ -47,7 +68,7 @@ export class AppComponent implements OnInit {
       this.messages.set([
         {
           sender: 'agent',
-          text: data.text || 'Hello! 👋 I am your Weather Agent.',
+          text: data.text || `Hello! 👋 I am your ${this.title()}.`,
           timestamp: new Date().toLocaleTimeString(),
           surfaceId,
         },
@@ -58,7 +79,7 @@ export class AppComponent implements OnInit {
       this.messages.set([
         {
           sender: 'agent',
-          text: '⚠️ Could not connect to Weather Agent at `http://127.0.0.1:8080/api/agent/chat`. Please start the backend service.',
+          text: '⚠️ Could not connect to the agent at `http://127.0.0.1:8080/api/agent/chat`. Please start the backend service.',
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);
@@ -92,7 +113,7 @@ export class AppComponent implements OnInit {
         ...prev,
         {
           sender: 'agent',
-          text: data.text || 'Response received from weather agent.',
+          text: data.text || 'Response received from the agent.',
           timestamp: new Date().toLocaleTimeString(),
           surfaceId,
         },
@@ -104,7 +125,7 @@ export class AppComponent implements OnInit {
         ...prev,
         {
           sender: 'agent',
-          text: `⚠️ Could not reach Weather Agent at \`http://127.0.0.1:8080\`. Please ensure the backend is running.`,
+          text: `⚠️ Could not reach the agent at \`http://127.0.0.1:8080\`. Please ensure the backend is running.`,
           timestamp: new Date().toLocaleTimeString(),
         },
       ]);

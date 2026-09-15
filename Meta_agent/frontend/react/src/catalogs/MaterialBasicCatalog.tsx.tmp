@@ -1,0 +1,245 @@
+import React from 'react';
+import { Card, CardContent, Typography, Button, Divider, Box, Select, MenuItem, FormControl, InputLabel, OutlinedInput, TextField } from '@mui/material';
+import { basicCatalog, createBinderlessComponentImplementation, createComponentImplementation } from '@a2ui/react/v0_9';
+import { CardApi, ColumnApi, RowApi, TextApi, ButtonApi, DividerApi, IconApi, ChoicePickerApi, DateTimeInputApi } from '@a2ui/web_core/v0_9';
+
+// 1. Map Card
+const MaterialCard = createBinderlessComponentImplementation(CardApi, ({ context, buildChild }) => {
+  const childKey = context.componentModel.properties.child;
+  const childrenKeys = context.componentModel.properties.children || [];
+
+  return (
+    <Card variant="outlined" sx={{
+      mb: 2,
+      width: '100%',
+      maxWidth: '100%',
+      borderRadius: 'var(--a2ui-card-border-radius, 24px)',
+      background: 'var(--a2ui-card-background, #ffffff)',
+      boxShadow: 'var(--a2ui-card-box-shadow)',
+      border: 'var(--a2ui-card-border, 1px solid #e0e3e7)'
+    }}>
+      <CardContent>
+        {childKey && buildChild(childKey)}
+        {childrenKeys.map((key) => <React.Fragment key={key}>{buildChild(key)}</React.Fragment>)}
+      </CardContent>
+    </Card>
+  );
+});
+
+// 2. Map Column
+const MaterialColumn = createBinderlessComponentImplementation(ColumnApi, ({ context, buildChild }) => {
+  const childrenKeys = context.componentModel.properties.children || [];
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+      {childrenKeys.map((key) => <React.Fragment key={key}>{buildChild(key)}</React.Fragment>)}
+    </Box>
+  );
+});
+
+// 3. Map Row
+const MaterialRow = createBinderlessComponentImplementation(RowApi, ({ context, buildChild }) => {
+  const childrenKeys = context.componentModel.properties.children || [];
+  return (
+    <Box sx={{ display: 'flex', flexDirection: 'row', gap: 1, alignItems: 'center' }}>
+      {childrenKeys.map((key) => <React.Fragment key={key}>{buildChild(key)}</React.Fragment>)}
+    </Box>
+  );
+});
+
+// 4. Map Text
+const MaterialText = createBinderlessComponentImplementation(TextApi, ({ context }) => {
+  const text = context.componentModel.properties.text || '';
+  const usageHint = context.componentModel.properties.usageHint || 'body';
+
+  let variant: any = 'body1';
+  if (usageHint === 'h1') variant = 'h4';
+  if (usageHint === 'h2') variant = 'h5';
+  if (usageHint === 'h3') variant = 'h6';
+  if (usageHint === 'caption') variant = 'caption';
+
+  return <Typography variant={variant} className={`a2ui-text ${usageHint}`}>{text}</Typography>;
+});
+
+// 5. Map Button
+const MaterialButton = createBinderlessComponentImplementation(ButtonApi, ({ context }) => {
+  const label = context.componentModel.properties.label || 'Button';
+  const action = context.componentModel.properties.action;
+  const variant = context.componentModel.properties.variant === 'outlined' ? 'outlined' : 'contained';
+
+  return (
+    <Button
+      variant={variant}
+      onClick={() => action && context.surface.dispatchAction(action, context.componentModel.id)}
+    >
+      {label}
+    </Button>
+  );
+});
+
+// 6. Map Divider
+const MaterialDivider = createBinderlessComponentImplementation(DividerApi, () => {
+  return <Divider sx={{ my: 1 }} />;
+});
+
+// 7. Map Icon
+const MaterialIcon = createBinderlessComponentImplementation(IconApi, ({ context }) => {
+  let iconName = context.componentModel.properties.name || '';
+  if (typeof iconName !== 'string') {
+    iconName = String(iconName);
+  }
+  const snakeName = iconName.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
+  return <span className="material-icons a2ui-icon" style={{ color: 'var(--google-blue)' }}>{snakeName}</span>;
+});
+
+// 8. Map ChoicePicker
+const MaterialChoicePicker = createComponentImplementation(ChoicePickerApi, ({ props }) => {
+  const isMultiple = props.variant === 'multipleSelection';
+  const label = props.label || '';
+  
+  const options = (props.options || []).map((o: any) => ({
+    value: String(o?.value ?? ''),
+    label: String(typeof o?.label === 'object' ? (o?.label?.value ?? o?.value) : (o?.label ?? o?.value))
+  }));
+
+  let selected: string[] = [];
+  if (Array.isArray(props.value)) {
+    selected = props.value.map(String);
+  } else if (props.value !== undefined && props.value !== null && props.value !== '') {
+    selected = [String(props.value)];
+  }
+
+  const handleChange = (event: any) => {
+    const val = event.target.value;
+    const next = Array.isArray(val) ? val : val ? [val] : [];
+    // @ts-ignore
+    if (props.setValue) props.setValue(next);
+  };
+
+  return (
+    <FormControl fullWidth sx={{ mb: 1.5 }}>
+      {label && <InputLabel>{label}</InputLabel>}
+      <Select
+        multiple={isMultiple}
+        value={isMultiple ? selected : (selected[0] ?? '')}
+        onChange={handleChange}
+        input={<OutlinedInput label={label} />}
+      >
+        {options.map((opt) => (
+          <MenuItem key={opt.value} value={opt.value}>
+            {opt.label}
+          </MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  );
+});
+
+// 9. Map DateTimeInput
+const MaterialDateTimeInput = createComponentImplementation(DateTimeInputApi, ({ props }) => {
+  const label = props.label || '';
+  const showTime = props.enableTime === true;
+  const showDate = props.enableDate === true || !showTime;
+
+  const raw = String(props.value ?? '');
+
+  const dateValueMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  const dateValue = dateValueMatch ? new Date(Number(dateValueMatch[1]), Number(dateValueMatch[2]) - 1, Number(dateValueMatch[3])) : null;
+
+  const timeValueMatch = raw.match(/(?:^|T)(\d{2}):(\d{2})/);
+  const timeValue = timeValueMatch ? (() => {
+    const d = dateValue ?? new Date();
+    const out = new Date(d);
+    out.setHours(Number(timeValueMatch[1]), Number(timeValueMatch[2]), 0, 0);
+    return out;
+  })() : null;
+
+  const commit = (date: Date | null, time: Date | null) => {
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const d = date ?? (time ? new Date() : null);
+    
+    const datePart = d ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` : '';
+    const timePart = time ? `${pad(time.getHours())}:${pad(time.getMinutes())}:00` : '';
+
+    const out = timePart ? `${datePart}T${timePart}` : datePart;
+    // @ts-ignore
+    if (props.setValue) props.setValue(out);
+  };
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (!val) {
+       commit(null, showTime ? timeValue : null);
+       return;
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) {
+       commit(d, showTime ? timeValue : null);
+    }
+  };
+
+  const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value; // "HH:MM"
+    if (!val) {
+       commit(showDate ? dateValue : null, null);
+       return;
+    }
+    const [hh, mm] = val.split(':');
+    const t = new Date();
+    t.setHours(Number(hh), Number(mm), 0, 0);
+    commit(showDate ? dateValue : null, t);
+  };
+
+  const toDateString = (d: Date | null) => {
+    if (!d) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  };
+
+  const toTimeString = (d: Date | null) => {
+    if (!d) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  return (
+    <Box sx={{ display: 'flex', gap: 1.5, width: '100%', mb: 1.5 }}>
+      {showDate && (
+        <TextField
+          type="date"
+          label={label || 'Pick a date'}
+          InputLabelProps={{ shrink: true }}
+          value={toDateString(dateValue)}
+          onChange={handleDateChange}
+          sx={{ flex: 1 }}
+        />
+      )}
+      {showTime && (
+        <TextField
+          type="time"
+          label={label || 'Pick a time'}
+          InputLabelProps={{ shrink: true }}
+          value={toTimeString(timeValue)}
+          onChange={handleTimeChange}
+          sx={{ flex: 1 }}
+        />
+      )}
+    </Box>
+  );
+});
+
+export const materialCatalog = {
+  ...basicCatalog,
+  components: new Map([
+    ...basicCatalog.components,
+    [IconApi.name, MaterialIcon],
+    [CardApi.name, MaterialCard],
+    [ColumnApi.name, MaterialColumn],
+    [RowApi.name, MaterialRow],
+    [TextApi.name, MaterialText],
+    [ButtonApi.name, MaterialButton],
+    [DividerApi.name, MaterialDivider],
+    [ChoicePickerApi.name, MaterialChoicePicker],
+    [DateTimeInputApi.name, MaterialDateTimeInput],
+  ])
+};

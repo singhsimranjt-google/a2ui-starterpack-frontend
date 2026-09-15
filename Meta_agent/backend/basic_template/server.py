@@ -32,11 +32,6 @@ except Exception:
     genai_client = None
 
 
-class PromptRequest(BaseModel):
-    prompt: str
-    action: Optional[Dict[str, Any]] = None
-
-
 class PromptResponse(BaseModel):
     success: bool
     text: str
@@ -50,6 +45,22 @@ def health_check():
         "agent": root_agent.name,
         "model": root_agent.model,
         "catalog": "Basic Catalog v0.9",
+    }
+
+
+@app.get("/api/agent/info")
+def agent_info():
+    """
+    Single source of truth for this agent's identity.
+
+    Any frontend (Angular, React, CLI, ...) reads its display name from here at runtime,
+    so the generator never has to rewrite frontend source files.
+    """
+    return {
+        "id": config.agent_id,
+        "name": config.agent_name,
+        "description": config.agent_description,
+        "model": root_agent.model,
     }
 
 # Create a global variable to store the persistent chat session

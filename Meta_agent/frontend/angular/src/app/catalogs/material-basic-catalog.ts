@@ -9,6 +9,8 @@ import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { MatTimepickerModule } from '@angular/material/timepicker';
 
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { FormsModule } from '@angular/forms';
@@ -24,7 +26,7 @@ import {
   ComponentHostComponent,
   A2uiRendererService
 } from '@a2ui/angular/v0_9';
-import { CardApi, ButtonApi, DividerApi, DataContext, TextFieldApi, CheckBoxApi, RowApi, IconApi, DateTimeInputApi, ImageApi } from '@a2ui/web_core/v0_9';
+import { CardApi, ButtonApi, DividerApi, DataContext, TextFieldApi, CheckBoxApi, RowApi, IconApi, DateTimeInputApi, ImageApi, ChoicePickerApi } from '@a2ui/web_core/v0_9';
 
 /**
  * Bespoke Angular Material Card wrapper for A2UI Basic Catalog
@@ -290,37 +292,100 @@ export class MaterialRowComponent extends CatalogComponent<typeof RowApi> {
 @Component({
   selector: 'a2ui-mat-datetime',
   standalone: true,
-  imports: [MatFormFieldModule, MatInputModule, MatDatepickerModule, MatNativeDateModule, FormsModule],
+  imports: [
+    MatFormFieldModule,
+    MatInputModule,
+    MatDatepickerModule,
+    MatTimepickerModule,
+    MatNativeDateModule,
+    FormsModule,
+  ],
   template: `
-    <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 12px;">
-      <mat-label>{{ label() }}</mat-label>
-      <input matInput [matDatepicker]="picker" [ngModel]="value()" (ngModelChange)="onValueChange($event)">
-      <mat-datepicker-toggle matIconSuffix [for]="picker"></mat-datepicker-toggle>
-      <mat-datepicker #picker></mat-datepicker>
-    </mat-form-field>
+    <div style="display: flex; gap: 12px; width: 100%;">
+      @if (showDate()) {
+        <mat-form-field appearance="outline" style="flex: 1; margin-bottom: 12px;">
+          <mat-label>{{ label() || 'Pick a date' }}</mat-label>
+          <input matInput [matDatepicker]="datePicker"
+                 [ngModel]="dateValue()" (ngModelChange)="onDateChange($event)">
+          <mat-datepicker-toggle matIconSuffix [for]="datePicker"></mat-datepicker-toggle>
+          <mat-datepicker #datePicker></mat-datepicker>
+        </mat-form-field>
+      }
+      @if (showTime()) {
+        <mat-form-field appearance="outline" style="flex: 1; margin-bottom: 12px;">
+          <mat-label>{{ label() || 'Pick a time' }}</mat-label>
+          <input matInput [matTimepicker]="timePicker"
+                 [ngModel]="timeValue()" (ngModelChange)="onTimeChange($event)">
+          <mat-timepicker-toggle matIconSuffix [for]="timePicker"></mat-timepicker-toggle>
+          <mat-timepicker #timePicker interval="30min"></mat-timepicker>
+        </mat-form-field>
+      }
+    </div>
   `,
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MaterialDateTimeInputComponent extends CatalogComponent<typeof DateTimeInputApi> {
   label = computed(() => this.props()['label']?.value() || '');
 
-  // Safely parse the A2UI String back into a Date object for the Material Picker
-  value = computed(() => {
-    const rawValue = this.props()['value']?.value();
-    return rawValue ? new Date(rawValue) : null;
+  showTime = computed(() => this.props()['enableTime']?.value() === true);
+  // Back-compat: if neither flag is set, behave as a plain date picker
+  showDate = computed(
+    () => this.props()['enableDate']?.value() === true || !this.showTime()
+  );
+
+  private raw = computed(() => String(this.props()['value']?.value() ?? ''));
+
+  // Accepts "2026-09-18", "2026-09-18T14:30", "2026-09-18T14:30:00.000Z"
+  dateValue = computed<Date | null>(() => {
+    const m = this.raw().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
   });
 
-  onValueChange(newValue: any) {
-    if (!newValue) return;
+  // Accepts "14:30" or the time portion of a full ISO string
+  timeValue = computed<Date | null>(() => {
+    const m = this.raw().match(/(?:^|T)(\d{2}):(\d{2})/);
+    if (!m) return null;
+    const base = this.dateValue() ?? new Date();
+    const out = new Date(base);
+    out.setHours(Number(m[1]), Number(m[2]), 0, 0);
+    return out;
+  });
 
-    // Safely handle both Date objects (from calendar clicks) and Strings (from manual typing)
-    const dateObj = newValue instanceof Date ? newValue : new Date(newValue);
+  onDateChange(newValue: any) {
+    const d = this.toDate(newValue);
+    if (!d) return;
+    this.commit(d, this.showTime() ? this.timeValue() : null);
+  }
 
-    if (!isNaN(dateObj.getTime())) {
-      // Format the Date object to YYYY-MM-DD for the Python LLM
-      const formatted = new Date(dateObj.getTime() - (dateObj.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-      this.props()['value']?.onUpdate(formatted);
-    }
+  onTimeChange(newValue: any) {
+    const t = this.toDate(newValue);
+    if (!t) return;
+    this.commit(this.showDate() ? this.dateValue() : null, t);
+  }
+
+  private toDate(v: any): Date | null {
+    if (!v) return null;
+    const d = v instanceof Date ? v : new Date(v);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  /** Emits YYYY-MM-DD, HH:MM, or YYYY-MM-DDTHH:MM depending on which fields are on. */
+  /** Emits YYYY-MM-DD for date-only, or full ISO YYYY-MM-DDTHH:MM:00 whenever a time is set. */
+  private commit(date: Date | null, time: Date | null) {
+    const pad = (n: number) => String(n).padStart(2, '0');
+
+    // A time-only field still needs a date anchor, or datetime.fromisoformat() rejects it
+    const d = date ?? (time ? new Date() : null);
+    const datePart = d
+      ? `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+      : '';
+    const timePart = time
+      ? `${pad(time.getHours())}:${pad(time.getMinutes())}:00`
+      : '';
+
+    const out = timePart ? `${datePart}T${timePart}` : datePart;
+    this.props()['value']?.onUpdate(out);
   }
 }
 
@@ -353,6 +418,64 @@ export class MaterialImageComponent extends CatalogComponent<any> {
 
 
 /**
+ * Bespoke Angular Material <mat-select> dropdown for A2UI ChoicePicker.
+ * Renders as a real dropdown instead of the default radio/checkbox list.
+ */
+@Component({
+  selector: 'a2ui-mat-choicepicker',
+  standalone: true,
+  imports: [MatFormFieldModule, MatSelectModule, FormsModule],
+  template: `
+    <mat-form-field appearance="outline" style="width: 100%; margin-bottom: 12px;">
+      <mat-label>{{ label() }}</mat-label>
+      <mat-select
+        [multiple]="isMultiple()"
+        [ngModel]="isMultiple() ? selected() : selected()[0]"
+        (ngModelChange)="onValueChange($event)">
+        @for (opt of options(); track opt.value) {
+          <mat-option [value]="opt.value">{{ opt.label }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  `,
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class MaterialChoicePickerComponent extends CatalogComponent<typeof ChoicePickerApi> {
+  label = computed(() => this.props()['label']?.value() || '');
+
+  // "multipleSelection" -> multi-select dropdown; default is single-select
+  isMultiple = computed(
+    () => this.props()['variant']?.value() === 'multipleSelection'
+  );
+
+  options = computed(() => {
+    const raw = (this.props()['options']?.value() as any) || [];
+    if (!Array.isArray(raw)) return [];
+    return raw.map((o: any) => ({
+      value: String(o?.value ?? ''),
+      // label may arrive as a plain string or a resolved DynamicString
+      label: String(
+        typeof o?.label === 'object' ? (o?.label?.value ?? o?.value) : (o?.label ?? o?.value)
+      ),
+    }));
+  });
+
+  // A2UI binds ChoicePicker.value to a string ARRAY, even when single-select
+  selected = computed<string[]>(() => {
+    const val = this.props()['value']?.value() as any;
+    if (Array.isArray(val)) return val.map(String);
+    if (val === undefined || val === null || val === '') return [];
+    return [String(val)];
+  });
+
+  onValueChange(newValue: string | string[]) {
+    const next = Array.isArray(newValue) ? newValue : newValue ? [newValue] : [];
+    this.props()['value']?.onUpdate(next);
+  }
+}
+
+
+/**
  * Bespoke Angular Material Extended Catalog for A2UI v0.9
  */
 @Injectable({
@@ -368,6 +491,7 @@ export class MaterialBasicCatalog extends BasicCatalogBase {
         dateTimeInput: { ...DateTimeInputApi, component: MaterialDateTimeInputComponent },
         textField: { ...TextFieldApi, component: MaterialTextFieldComponent },
         checkBox: { ...CheckBoxApi, component: MaterialCheckboxComponent },
+        choicePicker: { ...ChoicePickerApi, component: MaterialChoicePickerComponent },
         row: { ...RowApi, component: MaterialRowComponent },
         icon: { ...IconApi, component: MaterialIconComponent },
       },

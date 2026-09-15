@@ -33,23 +33,42 @@ def extract_file_content(response_text, filename):
         return match.group(1).strip()
     return None
 
-def extract_folder_name(response_text):
+def extract_folder_name(response_text, template_dir=None):
+    """Extract <folder_name>. Falls back to FALLBACK_AGENT_NAME on anything unsafe."""
     match = re.search(r"<folder_name>(.*?)</folder_name>", response_text, re.DOTALL)
-    if match:
-        return match.group(1).strip()
-    return "generated_agent"
+    raw = match.group(1).strip() if match else ""
 
+    # Must be plain snake_case: blocks ".", "..", "../Meta_agent", "/etc", ".hidden"
+    if not re.fullmatch(r"[a-z][a-z0-9_]{2,49}", raw):
+        print(f"⚠️  Invalid or missing <folder_name> (got: '{raw}').")
+        print(f"   Falling back to '{FALLBACK_AGENT_NAME}'.")
+        return FALLBACK_AGENT_NAME
+
+    # Never let the LLM target a directory we cannot afford to lose
+    reserved = {
+        "basic_template", "tests", "examples", "frontend", "backend",
+        "src", "node_modules", "meta_json",
+    }
+    if template_dir:
+        reserved.add(template_dir)
+
+    if raw in reserved:
+        print(f"⚠️  '{raw}' is a reserved directory name - refusing to overwrite it.")
+        print(f"   Falling back to '{FALLBACK_AGENT_NAME}'.")
+        return FALLBACK_AGENT_NAME
+
+    return raw
+
+TEMPLATE_DIR_NAME = "basic_template"
 def find_template_dir():
-    # Force it to ALWAYS use the basic_agent_template
-    if os.path.exists("basic_agent_template"):
-        return "basic_agent_template"
-        
-    # Fallback
-    for item in os.listdir("."):
-        if os.path.isdir(item) and item not in [".venv", "tests", ".git"]:
-            if os.path.exists(os.path.join(item, "agent.py")):
-                return item
-    return None
+    """Locate the golden template. Fails loudly instead of guessing."""
+    if os.path.isdir(TEMPLATE_DIR_NAME) and os.path.exists(
+        os.path.join(TEMPLATE_DIR_NAME, "agent.py")
+    ):
+        return TEMPLATE_DIR_NAME
+    
+    print(f"\n❌ FATAL: Could not find the golden template '{TEMPLATE_DIR_NAME}/'.")
+    sys.exit(1)
 
 def main():
     print("==================================================")
@@ -222,6 +241,18 @@ When designing a list item (like a Row) containing text on the left and an actio
 
 18. THE @TOOL DECORATOR
 - Do NOT import `@tool` from `google.adk.tools`. When using `genai_client.chats.create(...)`, you must pass raw, undecorated Python functions directly into the `tools=[...]` array.
+
+19. DROPDOWN MENUS (ChoicePicker)
+A2UI v0.9 has NO <select> component. For any dropdown / "pick one from a list" UI you MUST use `ChoicePicker`.
+- `options` MUST be a literal JSON array of {"label": "...", "value": "..."} objects. It can NEVER be a "${...}" string.
+- `variant` is "mutuallyExclusive" for single-select (default) or "multipleSelection" for multi-select.
+- `value` MUST be bound: "value": {"path": "/application/your_field"}
+- The frontend writes a string ARRAY to that path (e.g. ["alice_martin"]) even for single-select.
+  Therefore any tools.py function receiving it MUST normalize: `if isinstance(x, list): x = x[0] if x else ""`
+CORRECT:
+{"component": "ChoicePicker", "id": "doc", "label": "Select a Doctor", "variant": "mutuallyExclusive",
+ "options": [{"label": "Dr. Alice", "value": "alice"}, {"label": "Dr. Bob", "value": "bob"}],
+ "value": {"path": "/application/doctor"}}
 =========================================
 
 CRITICAL INSTRUCTIONS FOR JSON TEMPLATES:
@@ -409,7 +440,7 @@ CRITICAL INSTRUCTIONS FOR agent.py:
 ==============================
 
 Checklist to FAIL the coder:
-1. Did the Coder invent components that don't exist? (Only Card, Column, Row, Text, Icon, Divider, Button, TextField, CheckBox, DateTimeInput, Image are allowed). (FAIL if others exist).
+1. Did the Coder invent components that don't exist? (Only Card, Column, Row, Text, Icon, Divider, Button, TextField, CheckBox, DateTimeInput, Image, ChoicePicker are allowed). (FAIL if others exist).
 2. Did the Coder nest components inside `createSurface.layout` instead of using a flat `updateComponents` array? (FAIL if yes).
 3. Did the Coder use `"text"` or `"label"` on a Button instead of `"child"`? (FAIL if yes).
 4. Did the Coder instruct the use of 'spacing' or 'gap' on a Column or Row? (FAIL if yes).
@@ -424,6 +455,17 @@ Checklist to FAIL the coder:
 13. Did the Coder hallucinate `padding`, `margin`, `spacing`, or `gap` on any component? (FAIL if yes, these do not exist).
 14. **TEMPLATE COMPARISON:** Did the Coder modify anything in `agent.py` OTHER than the `tools=[...]` array at the bottom? (FAIL if they modified the boilerplate).
 15. **STRUCTURE AUDIT:** Review the generated `examples/v0_9/*.json` files. While the *use-case* is unique, is the underlying structure, component naming (TitleCase), and strict property usage identical to the A2UI spec? Did they hallucinate CSS properties, wrapper objects, or unapproved keys? (FAIL if yes).
+16. **DROPDOWN MENUS (ChoicePicker)**
+A2UI v0.9 has NO <select> component. For any dropdown / "pick one from a list" UI you MUST use `ChoicePicker`.
+- `options` MUST be a literal JSON array of {"label": "...", "value": "..."} objects. It can NEVER be a "${...}" string.
+- `variant` is "mutuallyExclusive" for single-select (default) or "multipleSelection" for multi-select.
+- `value` MUST be bound: "value": {"path": "/application/your_field"}
+- The frontend writes a string ARRAY to that path (e.g. ["alice_martin"]) even for single-select.
+  Therefore any tools.py function receiving it MUST normalize: `if isinstance(x, list): x = x[0] if x else ""`
+CORRECT:
+{"component": "ChoicePicker", "id": "doc", "label": "Select a Doctor", "variant": "mutuallyExclusive",
+ "options": [{"label": "Dr. Alice", "value": "alice"}, {"label": "Dr. Bob", "value": "bob"}],
+ "value": {"path": "/application/doctor"}}
 
 If the code is PERFECT, reply with EXACTLY '<PASS>'.
 If the code has errors, reply with '<FAIL>' followed by a detailed list of what needs to be fixed.
@@ -465,7 +507,32 @@ If the code has errors, reply with '<FAIL>' followed by a detailed list of what 
     # FILE WRITING (COPY WHOLE FOLDER, OVERWRITE 4 FILES)
     # ----------------------------------------------------------------
     text = generated_code
-    output_dir = extract_folder_name(text)
+    output_dir = extract_folder_name(text, template_dir)
+
+    # ----------------------------------------------------------------
+    # PRE-FLIGHT VALIDATION - hard-fail BEFORE touching the filesystem
+    # ----------------------------------------------------------------
+    REQUIRED_FILES = ["prompt.py", "tools.py", "agent.py"]
+    generated_json_files = [
+        f for f in re.findall(r'<file name="([^"]+)">', text) if f.endswith(".json")
+    ]
+    missing = [fn for fn in REQUIRED_FILES if not extract_file_content(text, fn)]
+    if missing:
+        print(f"\n❌ FATAL: The Coder Agent did not emit these required files: {missing}")
+        print("   If we continued, the copied template's files would silently survive")
+        print("   (e.g. your new agent would ship with the pizza-ordering tools).")
+        print("   Aborting. Nothing was written or deleted.")
+        sys.exit(1)
+    if not generated_json_files:
+        print("\n❌ FATAL: The Coder Agent emitted no examples/v0_9/*.json templates.")
+        print("   Aborting. Nothing was written or deleted.")
+        sys.exit(1)
+    print(f"\n✅ Pre-flight OK: {', '.join(REQUIRED_FILES)} "
+          f"+ {len(generated_json_files)} JSON template(s) found.")
+
+    # ----------------------------------------------------------------
+    # FILE WRITING
+    # ----------------------------------------------------------------
     
     if os.path.exists(output_dir):
         shutil.rmtree(output_dir)
@@ -485,8 +552,8 @@ If the code has errors, reply with '<FAIL>' followed by a detailed list of what 
         content = extract_file_content(text, filename)
         if content:
             # Strip markdown code blocks if the LLM included them inside the tags
-            content = re.sub(r"^```[a-zA-Z]*\\n", "", content)
-            content = re.sub(r"\\n```$", "", content)
+            content = re.sub(r"^```[a-zA-Z]*\n", "", content)
+            content = re.sub(r"\n```$", "", content)
             content = content.strip()
             
             if filename == "prompt.py":
@@ -526,24 +593,12 @@ If the code has errors, reply with '<FAIL>' followed by a detailed list of what 
         print("  -> Successfully dynamically patched config.py")
 
     # ----------------------------------------------------------------
-    # 2. Update Angular Frontend Title
+    # 2. Frontend title
     # ----------------------------------------------------------------
-    frontend_app_ts = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "frontend", "angular", "src", "app", "app.component.ts")
-    if os.path.exists(frontend_app_ts):
-        with open(frontend_app_ts, "r") as f:
-            app_text = f.read()
-            
-        agent_title = output_dir.replace("_", " ").title()
-        
-        # Dynamically changes: title = signal('Whatever'); to title = signal('New Agent Title');
-        app_text = re.sub(r"title\s*=\s*signal\('[^']+'\);", f"title = signal('{agent_title}');", app_text)
-        
-        with open(frontend_app_ts, "w") as f:
-            f.write(app_text)
-        print("  -> Successfully updated Angular app.component.ts title")
-    else:
-        print(f"  -> Skipping Angular title update (could not find path: {frontend_app_ts})")
-    
+    # Nothing to do. Both frontends read the agent name at runtime from
+    # GET /api/agent/info, which is served straight from config.agent_name.
+    # The frontends are generic shells and are never modified by the generator.
+
     print(f"\n🎉 DONE! Run: uv run uvicorn {output_dir}.server:app --reload --port 8080")
 
 if __name__ == "__main__":
