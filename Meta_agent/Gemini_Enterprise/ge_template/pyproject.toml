@@ -1,16 +1,16 @@
 [project]
-name = "{{PROJECT_NAME}}"
+name = "clinic_scheduling_agent"
 version = "0.1.0"
-description = "Gemini Enterprise (GE) Custom Agent & Renderer"
+description = "Google ADK & A2UI Agent Application"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "google-adk>=2.8.0",
     "google-genai>=0.1.1",
-    "fastapi>=0.112.0",
-    "uvicorn[standard]>=0.30.0",
     "pydantic>=2.8.0",
     "python-dotenv>=1.0.1",
+    "google-adk>=2.8.0",
+    "a2ui-agent-sdk>=0.5.0",
+    "google-cloud-aiplatform>=1.60.0",
 ]
 
 [project.optional-dependencies]

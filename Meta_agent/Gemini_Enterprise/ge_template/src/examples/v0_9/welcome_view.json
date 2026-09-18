@@ -1,0 +1,126 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "clinic_welcome_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "clinic_welcome_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "welcome_card"
+          ]
+        },
+        {
+          "component": "Card",
+          "id": "welcome_card",
+          "child": "welcome_content"
+        },
+        {
+          "component": "Column",
+          "id": "welcome_content",
+          "children": [
+            "welcome_title",
+            "welcome_subtitle",
+            "welcome_div_1",
+            "cap_row_1",
+            "cap_row_2",
+            "welcome_div_2",
+            "welcome_try_label",
+            "starter_row_1"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "welcome_title",
+          "variant": "h3",
+          "text": "Clinic Scheduling Assistant"
+        },
+        {
+          "component": "Text",
+          "id": "welcome_subtitle",
+          "variant": "body",
+          "text": "How can I help you today?"
+        },
+        {
+          "component": "Divider",
+          "id": "welcome_div_1"
+        },
+        {
+          "component": "Row",
+          "id": "cap_row_1",
+          "children": [
+            "cap_icon_1",
+            "cap_text_1"
+          ]
+        },
+        {
+          "component": "Icon",
+          "id": "cap_icon_1",
+          "name": "add"
+        },
+        {
+          "component": "Text",
+          "id": "cap_text_1",
+          "variant": "body",
+          "text": "Find a doctor and book an appointment"
+        },
+        {
+          "component": "Row",
+          "id": "cap_row_2",
+          "children": [
+            "cap_icon_2",
+            "cap_text_2"
+          ]
+        },
+        {
+          "component": "Icon",
+          "id": "cap_icon_2",
+          "name": "event"
+        },
+        {
+          "component": "Text",
+          "id": "cap_text_2",
+          "variant": "body",
+          "text": "View my appointment history"
+        },
+        {
+          "component": "Divider",
+          "id": "welcome_div_2"
+        },
+        {
+          "component": "Text",
+          "id": "welcome_try_label",
+          "variant": "h5",
+          "text": "Try saying:"
+        },
+        {
+          "component": "Row",
+          "id": "starter_row_1",
+          "children": [
+            "starter_icon_1",
+            "starter_text_1"
+          ]
+        },
+        {
+          "component": "Icon",
+          "id": "starter_icon_1",
+          "name": "play"
+        },
+        {
+          "component": "Text",
+          "id": "starter_text_1",
+          "variant": "body",
+          "text": "\"Find a doctor and book an appointment\""
+        }
+      ]
+    }
+  }
+]

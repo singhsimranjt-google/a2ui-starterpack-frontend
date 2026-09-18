@@ -1,296 +1,162 @@
-"""Google ADK & Gemini Enterprise Agent with Material A2UI v0.9.1 rendering."""
+"""A2UI v0.9 utilities and callbacks for Gemini Enterprise Agent."""
 
-import asyncio
 import json
 import os
 import re
-import sys
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-# Ensure project root is in python path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+from google.adk.agents import callback_context as callback_context_lib
+from google.adk.models import llm_response as llm_response_lib
+from google.genai import types
 
-try:
-    from google.genai import types, Client
-    GENAI_AVAILABLE = True
-except ImportError:
-    GENAI_AVAILABLE = False
-    types = None  # type: ignore
-    Client = None  # type: ignore
+_A2UI_V09_KEYS = frozenset({
+    "createSurface",
+    "updateComponents",
+    "updateDataModel",
+    "deleteSurface",
+})
 
-try:
-    from src.config import config
-    from src.prompt import ROLE_DESCRIPTION, UI_DESCRIPTION
-    from src.tools import get_agent_capabilities
-except ImportError:
-    from config import config
-    from prompt import ROLE_DESCRIPTION, UI_DESCRIPTION
-    from tools import get_agent_capabilities
-
-_TAG_PATTERN = re.compile(r"<a2ui-json>(.*?)</a2ui-json>", re.DOTALL)
+_TAG_PATTERN = re.compile(
+    r"<(?:a2ui-json|a2a_datapart_json)>(.*?)</(?:a2ui-json|a2a_datapart_json)>",
+    re.DOTALL,
+)
 
 
-class Agent:
-    """Production-ready Google ADK / Gemini Enterprise Agent."""
-
-    def __init__(self):
-        self.config = config
-        self.client: Optional[Any] = None
-        if GENAI_AVAILABLE and config.api_key:
-            if config.use_vertexai and config.gcp_project:
-                self.client = Client(vertexai=True, project=config.gcp_project, location=config.gcp_region)
-            elif config.api_key:
-                self.client = Client(api_key=config.api_key)
-        self.system_instruction = f"{ROLE_DESCRIPTION}\n\n{UI_DESCRIPTION}"
-
-    def build_mock_capabilities_card(self, surface_id: str = "capabilities-surface-01") -> List[Dict[str, Any]]:
-        """Constructs a deterministic, validated Material A2UI v0.9.1 capabilities card."""
-        caps_data = get_agent_capabilities()
-        return [
-            {
-                "version": "v0.9",
-                "createSurface": {
-                    "surfaceId": surface_id,
-                    "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
-                }
-            },
-            {
-                "version": "v0.9",
-                "updateComponents": {
-                    "surfaceId": surface_id,
-                    "components": [
-                        {
-                            "id": "root",
-                            "component": "Column",
-                            "children": ["capabilities_card"]
-                        },
-                        {
-                            "id": "capabilities_card",
-                            "component": "Card",
-                            "child": "content_col"
-                        },
-                        {
-                            "id": "content_col",
-                            "component": "Column",
-                            "children": [
-                                "header_row",
-                                "divider_1",
-                                "capabilities_lines",
-                                "divider_2",
-                                "actions_row"
-                            ]
-                        },
-                        {
-                            "id": "header_row",
-                            "component": "Row",
-                            "align": "center",
-                            "justify": "spaceBetween",
-                            "children": ["title_group", "header_icons"]
-                        },
-                        {
-                            "id": "title_group",
-                            "component": "Row",
-                            "align": "center",
-                            "children": ["sparkle_icon", "title_text"]
-                        },
-                        {
-                            "id": "sparkle_icon",
-                            "component": "Icon",
-                            "name": "star"
-                        },
-                        {
-                            "id": "title_text",
-                            "component": "Text",
-                            "text": "Capabilities",
-                            "variant": "h2"
-                        },
-                        {
-                            "id": "header_icons",
-                            "component": "Row",
-                            "align": "center",
-                            "children": ["heart_icon", "like_icon"]
-                        },
-                        {
-                            "id": "heart_icon",
-                            "component": "Icon",
-                            "name": "favorite"
-                        },
-                        {
-                            "id": "like_icon",
-                            "component": "Icon",
-                            "name": "check"
-                        },
-                        {
-                            "id": "divider_1",
-                            "component": "Divider",
-                            "axis": "horizontal"
-                        },
-                        {
-                            "id": "capabilities_lines",
-                            "component": "Column",
-                            "children": ["line_1", "line_2", "line_3", "line_4", "line_5"]
-                        },
-                        {
-                            "id": "line_1",
-                            "component": "Text",
-                            "text": "⚡ Dynamic Component Generation",
-                            "variant": "body"
-                        },
-                        {
-                            "id": "line_2",
-                            "component": "Text",
-                            "text": "🎴 Material A2UI Cards",
-                            "variant": "body"
-                        },
-                        {
-                            "id": "line_3",
-                            "component": "Text",
-                            "text": "🔘 Interactive Buttons",
-                            "variant": "body"
-                        },
-                        {
-                            "id": "line_4",
-                            "component": "Text",
-                            "text": "🎨 Material v0.9.1 UI Catalog",
-                            "variant": "body"
-                        },
-                        {
-                            "id": "line_5",
-                            "component": "Text",
-                            "text": "❤️ Delightful Agent Experience",
-                            "variant": "body"
-                        },
-                        {
-                            "id": "divider_2",
-                            "component": "Divider",
-                            "axis": "horizontal"
-                        },
-                        {
-                            "id": "actions_row",
-                            "component": "Row",
-                            "align": "center",
-                            "justify": "start",
-                            "children": ["btn_like", "btn_explore"]
-                        },
-                        {
-                            "id": "btn_like_text",
-                            "component": "Text",
-                            "text": "Like Capabilities"
-                        },
-                        {
-                            "id": "btn_like",
-                            "component": "Button",
-                            "child": "btn_like_text",
-                            "variant": "primary",
-                            "action": {
-                                "event": {
-                                    "name": "like_capabilities_event"
-                                }
-                            }
-                        },
-                        {
-                            "id": "btn_explore_text",
-                            "component": "Text",
-                            "text": "Explore More"
-                        },
-                        {
-                            "id": "btn_explore",
-                            "component": "Button",
-                            "child": "btn_explore_text",
-                            "variant": "default",
-                            "action": {
-                                "event": {
-                                    "name": "explore_more_event"
-                                }
-                            }
-                        }
-                    ]
-                }
-            }
-        ]
+def _wrap_a2ui_part(a2ui_message: dict[str, Any]) -> types.Part:
+    """Wraps an A2UI message as an A2A inline data blob."""
+    datapart_json = json.dumps({
+        "kind": "data",
+        "metadata": {"mimeType": "application/json+a2ui"},
+        "data": a2ui_message,
+    })
+    blob_data = (
+        f"<a2a_datapart_json>{datapart_json}</a2a_datapart_json>".encode("utf-8")
+    )
+    return types.Part(
+        inline_data=types.Blob(
+            data=blob_data,
+            mime_type="text/plain",
+        )
+    )
 
 
-    async def generate_response(self, user_input: str) -> Dict[str, Any]:
-        """Generates conversational responses and Material A2UI v0.9.1 components."""
-        cleaned_input = user_input.strip().lower()
+def _extract_v09_messages(payload: Any) -> list[dict[str, Any]]:
+    """Extracts A2UI message dictionaries from a parsed JSON payload."""
+    if isinstance(payload, list):
+        messages = []
+        for item in payload:
+            messages.extend(_extract_v09_messages(item))
+        return messages
+    if isinstance(payload, dict):
+        if any(key in payload for key in _A2UI_V09_KEYS):
+            return [payload]
+        if "data" in payload and isinstance(payload["data"], (dict, list)):
+            return _extract_v09_messages(payload["data"])
+    return []
 
-        # Direct flow handler for local/offline execution or fallback
-        if any(greet in cleaned_input for greet in ["hi", "hello", "hey", "greetings"]):
-            return {
-                "text": "Hello! 👋 I am your **Google ADK & A2UI Assistant**. How can I help you today? You can ask about my capabilities to see interactive A2UI cards in action!",
-                "a2ui": None
-            }
 
-        if "capabilit" in cleaned_input or "what can you do" in cleaned_input:
-            a2ui_payload = self.build_mock_capabilities_card()
-            return {
-                "text": "Here is an overview of my core capabilities rendered directly via the Material A2UI v0.9.1 catalog:",
-                "a2ui": a2ui_payload
-            }
+def _is_local_env() -> bool:
+    """Checks if the agent is running in a local environment."""
+    return os.environ.get("ENVIRONMENT", "local").lower() == "local"
 
-        # If API key is available, leverage Gemini 2.5 Flash
-        if self.client:
+
+def a2ui_before_model_callback(
+    callback_context: callback_context_lib.CallbackContext,
+    llm_request: Any,
+) -> None:
+    """Sanitizes history before sending to the LLM to prevent tag pollution."""
+    del callback_context
+    if not hasattr(llm_request, "contents") or not llm_request.contents:
+        return
+
+    for content in llm_request.contents:
+        if not content.parts:
+            continue
+        cleaned_parts = []
+        for part in content.parts:
+            if part.inline_data and part.inline_data.data:
+                if b"<a2a_datapart_json>" in part.inline_data.data:
+                    continue
+            if part.text and "<a2a_datapart_json>" in part.text:
+                cleaned_text = re.sub(
+                    r"<a2a_datapart_json>.*?</a2a_datapart_json>",
+                    "",
+                    part.text,
+                    flags=re.DOTALL,
+                ).strip()
+                if cleaned_text:
+                    cleaned_parts.append(types.Part.from_text(text=cleaned_text))
+                continue
+            cleaned_parts.append(part)
+        content.parts = cleaned_parts or [types.Part.from_text(text=" ")]
+
+
+def a2ui_callback(
+    callback_context: callback_context_lib.CallbackContext,
+    llm_response: llm_response_lib.LlmResponse,
+) -> llm_response_lib.LlmResponse | None:
+    """Processes LLM responses to extract clean text and A2UI data parts."""
+    del callback_context
+    if not llm_response.content or not llm_response.content.parts:
+        return None
+
+    transformed_parts = []
+    has_a2ui_tags = False
+    has_a2ui_parts = False
+
+    for part in llm_response.content.parts:
+        if not part.text or part.thought:
+            transformed_parts.append(part)
+            continue
+
+        raw_text = part.text
+        tag_blocks = _TAG_PATTERN.findall(raw_text)
+
+        # Simple text content with no A2UI tags
+        if not tag_blocks:
+            transformed_parts.append(part)
+            continue
+
+        has_a2ui_tags = True
+        clean_text = _TAG_PATTERN.sub("", raw_text).strip()
+
+        # Parse and extract A2UI messages from all blocks
+        a2ui_parts = []
+        for index, block in enumerate(tag_blocks, start=1):
+            block_str = block.strip()
+            if not block_str:
+                continue
             try:
-                response = self.client.models.generate_content(
-                    model=self.config.gemini_model,
-                    contents=user_input,
-                    config=types.GenerateContentConfig(
-                        system_instruction=self.system_instruction,
-                        temperature=0.2,
-                        max_output_tokens=4096,
-                    )
-                )
-                raw_text = response.text or ""
-                tag_match = _TAG_PATTERN.search(raw_text)
-                a2ui_data = None
-                clean_text = raw_text
+                parsed = json.loads(block_str)
+                messages = _extract_v09_messages(parsed)
+                for message in messages:
+                    a2ui_parts.append(_wrap_a2ui_part(message))
+            except (json.JSONDecodeError, ValueError, TypeError):
+                pass
 
-                if tag_match:
-                    try:
-                        a2ui_data = json.loads(tag_match.group(1).strip())
-                        clean_text = _TAG_PATTERN.sub("", raw_text).strip()
-                    except json.JSONDecodeError:
-                        a2ui_data = None
+        is_local = _is_local_env()
+        if a2ui_parts:
+            has_a2ui_parts = True
+            if is_local:
+                if clean_text:
+                    transformed_parts.append(types.Part.from_text(text=clean_text))
+                transformed_parts.extend(a2ui_parts)
+            else:
+                transformed_parts.extend(a2ui_parts)
+        else:
+            if clean_text:
+                transformed_parts.append(types.Part.from_text(text=clean_text))
 
-                return {"text": clean_text, "a2ui": a2ui_data}
-            except Exception as e:
-                # Fallback to local deterministic response
-                return {
-                    "text": f"Processed query with local reasoning engine: '{user_input}'. Ask 'what are your capabilities?' to see the Material A2UI card.",
-                    "a2ui": None
-                }
+    if not has_a2ui_tags:
+        return None
 
-        # Fallback response
-        return {
-            "text": f"Received your message: '{user_input}'. Tip: Ask 'what are your capabilities?' to see a Material A2UI card rendered in real-time!",
-            "a2ui": None
+    custom_metadata = getattr(llm_response, "custom_metadata", None) or {}
+    if has_a2ui_parts:
+        custom_metadata["a2a:response"] = True
+
+    return llm_response.model_copy(
+        update={
+            "content": types.Content(role="model", parts=transformed_parts),
+            "custom_metadata": custom_metadata,
         }
-
-
-async def main():
-    """CLI interactive test runner for the agent."""
-    print("=" * 70)
-    print(f"🤖 {config.agent_name} (Model: {config.gemini_model})")
-    print("Google ADK & Material A2UI v0.9.1 Runner")
-    print("=" * 70)
-
-    agent = Agent()
-
-    # Flow Step 1: User Greets
-    print("\n[Step 1] User: 'Hello!'")
-    res1 = await agent.generate_response("Hello!")
-    print(f"Agent: {res1['text']}")
-
-    # Flow Step 2: User asks for capabilities
-    print("\n[Step 2] User: 'What are your capabilities?'")
-    res2 = await agent.generate_response("What are your capabilities?")
-    print(f"Agent: {res2['text']}\n")
-    if res2['a2ui']:
-        print("<a2ui-json>")
-        print(json.dumps(res2['a2ui'], indent=2))
-        print("</a2ui-json>")
-    print("=" * 70)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    )
