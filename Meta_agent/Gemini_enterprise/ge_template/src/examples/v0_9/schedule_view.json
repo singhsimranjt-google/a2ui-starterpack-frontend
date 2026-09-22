@@ -1,0 +1,101 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "clinic_schedule_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "clinic_schedule_surface",
+      "components": [
+        {
+          "component": "MaterialColumn",
+          "id": "root",
+          "children": [
+            "schedule_card"
+          ]
+        },
+        {
+          "component": "MaterialCard",
+          "id": "schedule_card",
+          "children": [
+            "schedule_content"
+          ]
+        },
+        {
+          "component": "MaterialColumn",
+          "id": "schedule_content",
+          "children": [
+            "schedule_header",
+            "schedule_subheader",
+            "date_label",
+            "date_picker",
+            "time_label",
+            "time_picker",
+            "confirm_btn"
+          ]
+        },
+        {
+          "component": "MaterialText",
+          "id": "schedule_header",
+          "text": "Schedule Appointment",
+          "usageHint": "h4"
+        },
+        {
+          "component": "MaterialText",
+          "id": "schedule_subheader",
+          "text": "Booking for Jane Doe with Dr. Alice Martin",
+          "usageHint": "body"
+        },
+        {
+          "component": "MaterialText",
+          "id": "date_label",
+          "text": "Preferred Date"
+        },
+        {
+          "component": "MaterialDatepicker",
+          "id": "date_picker",
+          "value": {
+            "path": "/application/appointment_date"
+          }
+        },
+        {
+          "component": "MaterialText",
+          "id": "time_label",
+          "text": "Preferred Time"
+        },
+        {
+          "component": "MaterialTimepicker",
+          "id": "time_picker",
+          "value": {
+            "path": "/application/appointment_time"
+          }
+        },
+        {
+          "component": "MaterialButton",
+          "id": "confirm_btn",
+          "action": {
+            "event": {
+              "name": "confirm_appointment",
+              "context": {
+                "doctor": "${result.doctor}",
+                "patient_name": "${result.patient_name}",
+                "appointment_date": {
+                  "path": "/application/appointment_date"
+                },
+                "appointment_time": {
+                  "path": "/application/appointment_time"
+                }
+              }
+            }
+          },
+          "label": "Confirm Appointment",
+          "variant": "primary"
+        }
+      ]
+    }
+  }
+]

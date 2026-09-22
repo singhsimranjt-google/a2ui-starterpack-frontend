@@ -10,6 +10,6 @@ Because this project keeps its code one level deeper in `src/`, we re-export
     adk web .
 """
 
-from .src.agent import root_agent
+from .src.agent import root_agent, app
 
-__all__ = ["root_agent"]
+__all__ = ["root_agent", "app"]

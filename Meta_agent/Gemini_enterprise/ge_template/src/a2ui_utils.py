@@ -65,7 +65,8 @@ def parse_a2ui_response(raw_text: str) -> Tuple[str, Optional[List[Dict[str, Any
 
 
 A2UI_VERSION = "v0.9"
-BASIC_CATALOG_ID = "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+# BASIC_CATALOG_ID = "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+CATALOG_ID = "https://a2ui.org/specification/v0_9/material_catalog.json"
 
 _SURFACE_KEYS = ("createSurface", "updateComponents", "updateDataModel", "deleteSurface")
 
@@ -144,8 +145,11 @@ def normalize_a2ui_messages(
             continue
 
         if key == "createSurface":
-            if payload.get("catalogId") != BASIC_CATALOG_ID:
-                payload["catalogId"] = BASIC_CATALOG_ID  # (2)
+            # if payload.get("catalogId") != BASIC_CATALOG_ID:
+            #     payload["catalogId"] = BASIC_CATALOG_ID  # (2)
+            # has_create = True
+            if payload.get("catalogId") != CATALOG_ID:
+                payload["catalogId"] = CATALOG_ID  # (2)
             has_create = True
 
         normalized.append({"version": A2UI_VERSION, key: payload})  # (1)
@@ -159,7 +163,8 @@ def normalize_a2ui_messages(
                 "version": A2UI_VERSION,
                 "createSurface": {
                     "surfaceId": surface_id,
-                    "catalogId": BASIC_CATALOG_ID,
+                    # "catalogId": BASIC_CATALOG_ID,
+                    "catalogId": CATALOG_ID,
                 },
             },
         )
@@ -182,19 +187,40 @@ def _get_validator() -> Any:
         return _validator
     _validator_ready = True
     try:
-        from a2ui.basic_catalog.provider import BasicCatalog
+        # from a2ui.basic_catalog.provider import BasicCatalog
         from a2ui.inference_formats.direct_json import DirectJsonFormat
         from a2ui.schema import constants
+        from a2ui.schema.catalog import CatalogConfig
+
+        catalog_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "catalogs",
+            "material_catalog.json",
+        )
 
         fmt = DirectJsonFormat(
             constants.VERSION_0_9,
-            [BasicCatalog.get_config(constants.VERSION_0_9)],
+            # [BasicCatalog.get_config(constants.VERSION_0_9)],
+            [CatalogConfig.from_path(name="material", catalog_path=catalog_path)],
         )
         _validator = fmt._select_catalog(None).validator
     except Exception as err:  # pragma: no cover - environment dependent
         logger.warning("A2UI validator unavailable, skipping validation: %s", err)
         _validator = None
     return _validator
+
+
+def _drop_bad_components(messages: List[Dict[str, Any]]) -> None:
+    """Strips non-dict entries the model sometimes hallucinates into `components`."""
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        update = msg.get("updateComponents")
+        if not isinstance(update, dict):
+            continue
+        comps = update.get("components")
+        if isinstance(comps, list):
+            update["components"] = [c for c in comps if isinstance(c, dict)]
 
 
 def is_renderable(messages: List[Dict[str, Any]]) -> bool:
@@ -206,12 +232,14 @@ def is_renderable(messages: List[Dict[str, Any]]) -> bool:
     validator = _get_validator()
     if validator is None:
         return True
+    _drop_bad_components(messages)  # sanitize BEFORE validating
     try:
         validator.validate(messages)
         return True
     except Exception as err:
         logger.warning("A2UI payload failed validation: %s", err)
         return False
+
 
 def _wrap_a2ui_part(a2ui_message: Dict[str, Any]) -> types.Part:
     """Wraps a single A2UI message as an A2A inline data blob."""
@@ -231,26 +259,120 @@ def _is_local_env() -> bool:
     return os.environ.get("ENVIRONMENT", "local").lower() == "local"
 
 
+# How many component ids to echo back into history per card.
+_MAX_ECHO_COMPONENTS = 12
+
+
+def _summarize_a2ui_blob(raw: bytes) -> Optional[str]:
+    """Turns a stored A2A data part back into a short note the model can learn from.
+
+    We deliberately echo a SUMMARY, not the original JSON: the model needs proof
+    that it rendered a card, but replaying full payloads would bloat context and
+    tempt it to copy the <a2a_datapart_json> envelope verbatim.
+    """
+    try:
+        text = raw.decode("utf-8", errors="ignore")
+        match = re.search(
+            r"<a2a_datapart_json>(.*?)</a2a_datapart_json>", text, re.DOTALL
+        )
+        if not match:
+            return None
+        data = json.loads(match.group(1)).get("data", {})
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None
+
+    if not isinstance(data, dict):
+        return None
+
+    for key in _SURFACE_KEYS:
+        payload = data.get(key)
+        if not isinstance(payload, dict):
+            continue
+        surface = payload.get("surfaceId", "?")
+        if key == "updateComponents":
+            ids = [
+                str(c.get("id"))
+                for c in payload.get("components", [])
+                if isinstance(c, dict) and c.get("id")
+            ]
+            shown = ", ".join(ids[:_MAX_ECHO_COMPONENTS])
+            extra = (
+                ""
+                if len(ids) <= _MAX_ECHO_COMPONENTS
+                else f", +{len(ids) - _MAX_ECHO_COMPONENTS} more"
+            )
+            return f"{key}(surface={surface}, components=[{shown}{extra}])"
+        return f"{key}(surface={surface})"
+    return None
+
+
+def _summarize_user_action(raw: bytes) -> Optional[str]:
+    """Turns an inbound GE button click into plain text the model can act on.
+
+    GE sends clicks as an <a2a_datapart_json> blob carrying the event name and
+    the values bound to the form. The model needs that data, but must never see
+    the raw tag, or it starts imitating the envelope in its own output.
+    """
+    try:
+        text = raw.decode("utf-8", errors="ignore")
+        match = re.search(
+            r"<a2a_datapart_json>(.*?)</a2a_datapart_json>", text, re.DOTALL
+        )
+        if not match:
+            return None
+        action = json.loads(match.group(1)).get("data", {}).get("action")
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None
+    if not isinstance(action, dict) or not action.get("name"):
+        return None
+
+    name = action["name"]
+    context = action.get("context") or {}
+    if context:
+        return (
+            f"[User action: the user pressed a button that triggers `{name}`. "
+            f"Form values: {json.dumps(context, sort_keys=True)}. "
+            f"Call the `{name}` tool with exactly these values.]"
+        )
+    return (
+        f"[User action: the user pressed a button that triggers `{name}`. "
+        f"Call the `{name}` tool.]"
+    )
+
+
 def a2ui_before_model_callback(
     callback_context: callback_context_lib.CallbackContext,
     llm_request: Any,
 ) -> None:
-    """Strips previously emitted A2A data parts out of conversation history.
-
-    Without this the model sees its own data parts replayed as input and starts
-    imitating them, so output quality decays over a multi-turn conversation.
-    """
     del callback_context
     if not getattr(llm_request, "contents", None):
         return
 
+    # No manual truncation needed here! ADK EventsCompactionConfig does it.
+    
     for content in llm_request.contents:
         if not content.parts:
             continue
         cleaned_parts = []
+
         for part in content.parts:
             if part.inline_data and part.inline_data.data:
                 if b"<a2a_datapart_json>" in part.inline_data.data:
+                    # Inbound GE clicks and our own outbound cards share this
+                    # envelope, so the tag alone cannot tell them apart. Role
+                    # can: user = a click whose data the model needs, model =
+                    # our own card echoed back, which causes tag imitation.
+                    if content.role == "user":
+                        note = _summarize_user_action(part.inline_data.data)
+                        if note:
+                            cleaned_parts.append(
+                                types.Part.from_text(text=note)
+                            )
+                        else:
+                            logger.warning(
+                                "Unparseable inbound A2UI action part dropped: %s",
+                                part.inline_data.data[:200],
+                            )
                     continue
             if part.text and "<a2a_datapart_json>" in part.text:
                 cleaned_text = re.sub(
@@ -263,7 +385,18 @@ def a2ui_before_model_callback(
                     cleaned_parts.append(types.Part.from_text(text=cleaned_text))
                 continue
             cleaned_parts.append(part)
-        content.parts = cleaned_parts or [types.Part.from_text(text=" ")]
+
+        content.parts = cleaned_parts or content.parts
+
+    # Inject the system reminder to guarantee <a2ui-json> output
+    if llm_request.contents:
+        last_content = llm_request.contents[-1]
+        if last_content.role == "user":
+            last_content.parts.append(
+                types.Part.from_text(
+                    text="\n[System Note: Always reply with a valid <a2ui-json> block to render the UI.]"
+                )
+            )
 
 
 def a2ui_callback(
@@ -308,10 +441,11 @@ def a2ui_callback(
                                 
                 # Apply L3 Validation
                 if not is_renderable(normalized_messages):
-                    logger.warning("Dropping invalid A2UI payload because it failed schema validation.")
+                    logger.warning("Dropping invalid A2UI payload because it failed schema validation: %s", json.dumps(normalized_messages)[:800])
                     continue
 
-                for message in normalize_a2ui_messages(messages):
+                # for message in normalize_a2ui_messages(messages):
+                for message in normalized_messages:
                     a2ui_parts.append(_wrap_a2ui_part(message))
             except (json.JSONDecodeError, ValueError, TypeError) as exc:
                 # Log the payload so the failure is diagnosable from Cloud Logging.
@@ -328,7 +462,18 @@ def a2ui_callback(
             transformed_parts.append(types.Part.from_text(text=clean_text))
 
     if not has_a2ui_tags:
+        logger.warning(
+            "A2UI_NO_BLOCK: model returned no <a2ui-json>. finish_reason=%s text=%r",
+            getattr(llm_response, "finish_reason", None),
+            raw_text_full[:400],
+        )
         return None
+
+    logger.info(
+        "A2UI_OK: emitted %d data part(s)",
+        sum(1 for p in transformed_parts if getattr(p, "inline_data", None)),
+    )
+
 
     custom_metadata = getattr(llm_response, "custom_metadata", None) or {}
     if has_a2ui_parts:
@@ -344,21 +489,35 @@ def a2ui_callback(
 
 def a2ui_after_tool_callback(*args, **kwargs):
     """Stores the latest tool result in the context state for A2UI placeholder resolution."""
-    # ADK passes tool_context and tool_response as kwargs
-    callback_context = kwargs.get("tool_context")
+    tool_context = kwargs.get("tool_context")
     tool_response = kwargs.get("tool_response")
-    
-    if not callback_context or not tool_response:
-        return
-        
-    payload = getattr(tool_response, "response", None)
-    if payload:
-        payload = dict(payload)
-        inner = payload.get("result")
-        if len(payload) == 1 and isinstance(inner, dict):
-            payload = inner
-        # # print(f"\n✅ [TOOL FINISHED]: Stashing result for placeholder resolution:\n{payload}\n" + "-" * 40)
-        callback_context.state["last_tool_result"] = payload
+
+    if tool_context is None or tool_response is None:
+        return None
+
+    # ADK passes the tool's raw return value, which is a plain dict. The old
+    # getattr(tool_response, "response") always returned None for a dict, so
+    # last_tool_result was never written.
+    payload = (
+        tool_response
+        if isinstance(tool_response, dict)
+        else getattr(tool_response, "response", None)
+    )
+    if not isinstance(payload, dict):
+        logger.warning(
+            "A2UI: cannot stash tool result, unexpected type %s",
+            type(tool_response).__name__,
+        )
+        return None
+
+    payload = dict(payload)
+    inner = payload.get("result")
+    if len(payload) == 1 and isinstance(inner, dict):
+        payload = inner
+
+    tool_context.state["last_tool_result"] = payload
+    logger.info("A2UI: stashed tool result keys=%s", list(payload))
+    return None
 
 
 __all__ = [

@@ -1,0 +1,152 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "clinic_intake_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "clinic_intake_surface",
+      "components": [
+        {
+          "component": "MaterialColumn",
+          "id": "root",
+          "children": [
+            "intake_card"
+          ]
+        },
+        {
+          "component": "MaterialCard",
+          "id": "intake_card",
+          "children": [
+            "intake_content"
+          ]
+        },
+        {
+          "component": "MaterialColumn",
+          "id": "intake_content",
+          "children": [
+            "intake_header",
+            "doctor_picker_caption",
+            "doctor_picker",
+            "name_input",
+            "age_input",
+            "weight_input",
+            "first_visit_check",
+            "check_avail_btn"
+          ]
+        },
+        {
+          "component": "MaterialText",
+          "id": "intake_header",
+          "text": "Patient Information for Cardiology",
+          "usageHint": "h4"
+        },
+        {
+          "component": "MaterialText",
+          "id": "doctor_picker_caption",
+          "usageHint": "caption",
+          "text": "Select a Doctor"
+        },
+        {
+          "component": "MaterialChips",
+          "id": "doctor_picker",
+          "options": [
+            {
+              "label": "Dr. Alice Martin",
+              "value": "Dr. Alice Martin"
+            },
+            {
+              "label": "Dr. Bob Chen",
+              "value": "Dr. Bob Chen"
+            },
+            {
+              "label": "Dr. Carol White",
+              "value": "Dr. Carol White"
+            },
+            {
+              "label": "Dr. David Green",
+              "value": "Dr. David Green"
+            },
+            {
+              "label": "Dr. Eve Black",
+              "value": "Dr. Eve Black"
+            },
+            {
+              "label": "Dr. Frank Blue",
+              "value": "Dr. Frank Blue"
+            }
+          ],
+          "value": {
+            "path": "/application/doctor"
+          }
+        },
+        {
+          "component": "MaterialInput",
+          "id": "name_input",
+          "label": "Patient Full Name",
+          "value": {
+            "path": "/application/patient_name"
+          }
+        },
+        {
+          "component": "MaterialInput",
+          "id": "age_input",
+          "label": "Patient Age",
+          "value": {
+            "path": "/application/patient_age"
+          },
+          "type": "number"
+        },
+        {
+          "component": "MaterialInput",
+          "id": "weight_input",
+          "label": "Patient Weight (in kg)",
+          "value": {
+            "path": "/application/patient_weight"
+          },
+          "type": "number"
+        },
+        {
+          "component": "MaterialCheckbox",
+          "id": "first_visit_check",
+          "label": "Is this your first visit?",
+          "checked": {
+            "path": "/application/first_visit"
+          }
+        },
+        {
+          "component": "MaterialButton",
+          "id": "check_avail_btn",
+          "action": {
+            "event": {
+              "name": "check_doctor_availability",
+              "context": {
+                "doctor": {
+                  "path": "/application/doctor"
+                },
+                "patient_name": {
+                  "path": "/application/patient_name"
+                },
+                "patient_age": {
+                  "path": "/application/patient_age"
+                },
+                "patient_weight": {
+                  "path": "/application/patient_weight"
+                },
+                "first_visit": {
+                  "path": "/application/first_visit"
+                }
+              }
+            }
+          },
+          "label": "Check Doctor Availability",
+          "variant": "primary"
+        }
+      ]
+    }
+  }
+]

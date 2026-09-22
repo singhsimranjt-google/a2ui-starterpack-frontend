@@ -1,0 +1,128 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "clinic_history_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "clinic_history_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "history_card"
+          ]
+        },
+        {
+          "component": "Card",
+          "id": "history_card",
+          "child": "history_content"
+        },
+        {
+          "component": "Column",
+          "id": "history_content",
+          "children": [
+            "history_header",
+            "history_div_1",
+            "appt_1_card",
+            "appt_2_card",
+            "history_div_2",
+            "restart_btn"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "history_header",
+          "variant": "h4",
+          "text": "Your Appointment History"
+        },
+        {
+          "component": "Divider",
+          "id": "history_div_1"
+        },
+        {
+          "component": "Card",
+          "id": "appt_1_card",
+          "child": "appt_1_col"
+        },
+        {
+          "component": "Column",
+          "id": "appt_1_col",
+          "children": [
+            "appt_1_dept",
+            "appt_1_doc",
+            "appt_1_date"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "appt_1_dept",
+          "text": "Department: Cardiology"
+        },
+        {
+          "component": "Text",
+          "id": "appt_1_doc",
+          "text": "Doctor: Dr. Alice Martin"
+        },
+        {
+          "component": "Text",
+          "id": "appt_1_date",
+          "text": "Date: 2023-10-26"
+        },
+        {
+          "component": "Card",
+          "id": "appt_2_card",
+          "child": "appt_2_col"
+        },
+        {
+          "component": "Column",
+          "id": "appt_2_col",
+          "children": [
+            "appt_2_dept",
+            "appt_2_doc",
+            "appt_2_date"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "appt_2_dept",
+          "text": "Department: Orthopedics"
+        },
+        {
+          "component": "Text",
+          "id": "appt_2_doc",
+          "text": "Doctor: Dr. Eve Black"
+        },
+        {
+          "component": "Text",
+          "id": "appt_2_date",
+          "text": "Date: 2023-08-15"
+        },
+        {
+          "component": "Divider",
+          "id": "history_div_2"
+        },
+        {
+          "component": "Button",
+          "id": "restart_btn",
+          "child": "restart_btn_txt",
+          "action": {
+            "event": {
+              "name": "restart_flow"
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "restart_btn_txt",
+          "text": "Restart"
+        }
+      ]
+    }
+  }
+]

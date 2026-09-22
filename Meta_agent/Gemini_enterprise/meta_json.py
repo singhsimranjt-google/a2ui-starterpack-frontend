@@ -137,20 +137,28 @@ A2UI_BOILERPLATE_PROMPT = r"""
 - ALWAYS output your responses directly as text in the message body.
 - When rendering A2UI components, ALWAYS output the JSON strictly as text enclosed within `<a2ui-json>...</a2ui-json>` XML tags.
 - The JSON inside `<a2ui-json>...</a2ui-json>` MUST be a single valid JSON array `[ ... ]` containing `createSurface`, `updateComponents`, and `updateDataModel` messages, matching the exact syntax and component hierarchy from the provided example JSON templates.
-- **MANDATORY TEMPLATE FIDELITY (Basic Catalog v0.9)**:
+- **MANDATORY TEMPLATE FIDELITY (Material Catalog v0.9)**:
   - You MUST refer directly to the provided example JSON files in your system instructions when generating A2UI cards.
-  - The `catalogId` in `createSurface` MUST strictly be `"https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"`.
-  - You MUST strictly follow the exact component hierarchy, component types (`Card`, `Column`, `Row`, `Text`, `Icon`, `Divider`, `Button`, `Image`), and allowed properties defined in each example JSON file without adding any extra or invalid attributes.
-  - **NO STYLING OR SIZING PROPERTIES**: Do NOT include `"style"`, `"padding"`, `"margin"`, `"spacing"`, `"gap"`, `"justifyContent"`, `"alignItems"`, `"width"`, or `"height"` on any components. All components must strictly conform to Basic Catalog schema.
-  - `Text`: Valid `variant` values are strictly `"h1"`, `"h2"`, `"h3"`, `"h4"`, `"h5"`, `"caption"`, `"body"` (this is the exact enum from the v0.9 catalog schema; `"body"` is the default). Use headings for titles and `"body"`/`"caption"` for content. Do NOT invent any other variant.
-  - `Icon`: Valid `name` values must be strictly chosen from this list: "accountCircle", "add", "arrowBack", "arrowForward", "attachFile", "calendarToday", "call", "camera", "check", "close", "delete", "download", "edit", "event", "error", "favorite", "home", "info", "mail", "menu", "person", "phone", "search", "settings", "star", "warning". Do not use variants like "check_circle".
+  - The `catalogId` in `createSurface` MUST strictly be `"https://a2ui.org/specification/v0_9/material_catalog.json"`.
+  - You MUST strictly follow the exact component hierarchy, component types (`MaterialCard`, `MaterialColumn`, `MaterialRow`, `MaterialText`, `MaterialIcon`, `MaterialDivider`, `MaterialButton`, `MaterialInput`, `MaterialChips`, `MaterialCheckbox`, `MaterialDatepicker`, `MaterialTimepicker`), and allowed properties defined in each example JSON file without adding any extra or invalid attributes.
+  - **NO STYLING OR SIZING PROPERTIES**: Do NOT include `"style"`, `"padding"`, `"margin"`, `"spacing"`, `"gap"`, `"justifyContent"`, `"alignItems"`, `"width"`, or `"height"` on any components. All components must strictly conform to Material Catalog schema.
+  - `MaterialText`: uses `usageHint` (NOT `variant`). Valid values are strictly `"h1"`, `"h2"`, `"h3"`, `"h4"`, `"h5"`, `"caption"`, `"body"` (`"body"` is the default). Do NOT invent any other value.
+  - `MaterialCard`: takes a `children` ARRAY (NOT a single `child` string). Even for one child, write `"children": ["some_id"]`.
+  - `MaterialButton`: the label is the INLINE `label` property. Do NOT create a child `MaterialText` for the label.
+  - `MaterialIcon`: the property is `icon` (NOT `name`).
+  - `MaterialCheckbox`: bind state to `checked` (NOT `value`).
+  - `MaterialChips`: has NO `label` property. Put the caption in a sibling `MaterialText`.
+  - Dates and times use separate `MaterialDatepicker` and `MaterialTimepicker` components. There is no combined DateTimeInput and no `enableDate`/`enableTime` flags.
 - **NEVER OUTPUT INTERNAL AGENT INSTRUCTIONS**: Statements such as `(Stop here and wait for the user's response)` or `[Instruction: ...]` are internal model orchestration directives. You MUST NEVER output these instruction statements to the user.
 - **STRICT ASCII CHARACTERS IN A2UI JSON**: Inside all `<a2ui-json>...</a2ui-json>` blocks, you MUST use ONLY standard ASCII characters.
 - **Surface ID Generation**: Every response MUST use a NEW, UNIQUE `surfaceId`. Do NOT reuse a `surfaceId` across turns. Generate a fresh, descriptive id each time, e.g. `qual-practices-a7f3c9`, `qual-subregion-9b21`, `qual-effort-4e12`, `qual-report-8c34`.
+- **Surface Management**: Every `<a2ui-json>` array MUST begin with a `createSurface` message. Within a single response, the `surfaceId` in `createSurface` and in every following `updateComponents` / `updateDataModel` message MUST be character-for-character identical. NEVER emit a `deleteSurface` message.
 - **MANDATORY COMPANION MARKDOWN RULE**: In every turn where you output an `<a2ui-json>` block, you MUST ALSO write a concise companion fallback Markdown message outside the `<a2ui-json>` tag block. Keep the companion Markdown concise to ensure the payload is never truncated. NEVER output an empty message body.
 - **NEVER OUTPUT `<a2a_datapart_json>` TAGS**: You MUST NEVER use `<a2a_datapart_json>` or wrap messages in `{"kind": "data", ...}` envelopes. ALWAYS output standard `<a2ui-json>...</a2ui-json>` blocks.
-- **STRICT COMPLIANCE WITH A2UI V0.9 SPECIFICATION:** You MUST strictly adhere to the A2UI V0.9 Basic Catalog specification for component properties and schemas. Review the provided template JSON files for precise details. Ensure all component properties, data bindings, and catalog references are valid and correctly formatted according to the A2UI specification.
+- **STRICT COMPLIANCE WITH A2UI V0.9 SPECIFICATION:** You MUST strictly adhere to the A2UI V0.9 Material Catalog specification
 - **HANDLING EMPTY INPUTS**: If the user sends an empty message, or triggers an action without filling in the required form fields, you MUST NOT hallucinate data or crash. Instead, respond with a polite companion Markdown message asking them to provide the missing information.
+- **MANDATORY CARD ON TOOL FAILURE**: If a tool returns an `error` (or any failure result), you MUST STILL output a full `<a2ui-json>` block. Re-render the CURRENT view onto a BRAND NEW, UNIQUE `surfaceId` using its original JSON template, and surface the error text to the user inside that card (for example, as a `MaterialText` component with `usageHint` `"caption"`, optionally preceded by a `MaterialIcon` with `icon` `"error"`).
+
 """
 
 # ---------------------------------------------------------------------------
@@ -196,13 +204,12 @@ Apply this policy, in this exact priority order:
 WELCOME_VIEW_SPEC = r"""
 === MANDATORY WELCOME VIEW (STEP 1 OF EVERY GENERATED AGENT) ===
 You MUST emit a file `examples/v0_9/welcome_view.json`.
-
 - Use the `=== welcome_view.json ===` entry in the JSON TEMPLATES section below as your
   GOLDEN STRUCTURAL EXAMPLE. Copy its component structure, ids, and property usage
   EXACTLY. Change ONLY the wording so it matches THIS agent's domain and real tools.
-- Keep the same shape: root Column -> welcome_card -> welcome_content, with a title,
-  a subtitle, a Divider, 3-5 capability Rows (Icon + Text), a Divider, a "Try saying:"
-  label, and EXACTLY ONE starter-prompt Row.
+- Keep the same shape: root MaterialColumn -> welcome_card -> welcome_content, with a title,
+  a subtitle, a MaterialDivider, 3-5 capability MaterialRows (MaterialIcon + MaterialText), a MaterialDivider, a "Try saying:"
+  label, and EXACTLY ONE starter-prompt MaterialRow.
 - The 3-5 capabilities MUST describe real actions backed by this agent's tools.
   No filler like "help you with tasks".
 - The ONE starter prompt MUST be the concrete phrase that moves the user to step 2,
@@ -222,17 +229,17 @@ opener such as "hi", "hello", or "start" - render ONLY the welcome card, then st
 - Do NOT call any tool on this turn.
 - Create the surface using the normal surface rules already given above.
 Card structure:
-  * root `Column` has exactly one child: `welcome_card`
-  * `Card` id `welcome_card` -> `child` is `Column` id `welcome_content`
-  * `welcome_content` children, in order:
-      1. `Text` `welcome_title`, variant "h3" - names your role
-      2. `Text` `welcome_subtitle`, variant "body" - "Here's what I can do for you:"
-      3. `Divider` `welcome_div_1`
-      4. 3-5 capability `Row`s, each an `Icon` + a `Text` (variant "body"),
+  * root `MaterialColumn` has exactly one child: `welcome_card`
+  * `MaterialCard` id `welcome_card` -> `children` is `["welcome_content"]`
+  * `MaterialColumn` id `welcome_content` contains, in order:
+      1. `MaterialText` `welcome_title`, usageHint "h3" - names your role
+      2. `MaterialText` `welcome_subtitle`, usageHint "body" - "Here's what I can do for you:"
+      3. `MaterialDivider` `welcome_div_1`
+      4. 3-5 capability `MaterialRow`s, each a `MaterialIcon` + a `MaterialText` (usageHint "body"),
          each describing a REAL action backed by one of your tools
-      5. `Divider` `welcome_div_2`
-      6. `Text` `welcome_try_label`, variant "h5" - "Try saying:"
-      7. ONE starter `Row`: an `Icon` + a `Text` (variant "body") holding a
+      5. `MaterialDivider` `welcome_div_2`
+      6. `MaterialText` `welcome_try_label`, usageHint "h5" - "Try saying:"
+      7. ONE starter `MaterialRow`: a `MaterialIcon` + a `MaterialText` (usageHint "body") holding a
          concrete domain phrase in double quotes
 After rendering, WAIT for the user. When they express that intent in any phrasing,
 move to the first step of the UI flow below.
@@ -247,124 +254,63 @@ move to the first step of the UI flow below.
 # ---------------------------------------------------------------------------
 A2UI_STRICT_RULES = r"""
 === A2UI V0.9 STRICT RULES (MUST OBEY) ===
-A2UI v0.9 Basic Catalog - Critical Rules for Meta-Agent Prompt Generation
-
+A2UI v0.9 Material Catalog - Critical Rules for Meta-Agent Prompt Generation
 When writing system prompts for A2UI agents, the Meta-Agent MUST enforce the following strict framework rules to prevent UI crashes:
-
 1. THE FLATTENED COMPONENT REQUIREMENT (Fixes "Component root not found")
 In A2UI v0.9, the `createSurface` payload DOES NOT accept a `"layout"` or nested component tree. It strictly accepts ONLY `surfaceId` and `catalogId`.
 To render components, you MUST send a completely separate `updateComponents` mutation containing a FLAT array of components. The very first component in this flat array MUST have `"id": "root"`. Component nesting is achieved by passing string IDs into the `children` arrays of parent components, rather than nesting JSON objects.
 INCORRECT:
-`{"createSurface": {"surfaceId": "...", "layout": {"component": "Column", "id": "root", ...}}}`
+`{"createSurface": {"surfaceId": "...", "layout": {"component": "MaterialColumn", "id": "root", ...}}}`
 CORRECT:
-`{"createSurface": {"surfaceId": "...", "catalogId": "..."}}`
-`{"updateComponents": {"surfaceId": "...", "components": [{"component": "Column", "id": "root", "children": ["btn1"]}, {"component": "Button", "id": "btn1", ...}]}}`
-
-2. BUTTON TEXT (Fixes "Validation failed: Unrecognized key 'text'")
-In A2UI v0.9, a `Button` component DOES NOT accept a `"text"` or `"label"` property. It strictly requires a `"child"` property containing the string ID of a separate Text component.
-INCORRECT: `{ "component": "Button", "text": "Submit" }`
-CORRECT: 
-`{ "component": "Button", "id": "my_btn", "child": "my_btn_txt" }`
-`{ "component": "Text", "id": "my_btn_txt", "text": "Submit" }`
-
-3. CAPITALIZED COMPONENT NAMES (Fixes "Component type not found")
-All component type names must be strictly TitleCased exactly as defined in the catalog.
-CORRECT: `Column`, `Row`, `Text`, `Button`, `TextField`, `DateTimeInput`, `Card`.
-INCORRECT: `column`, `row`, `text`
-
-4. FEW-SHOT JSON TEMPLATING
-The most robust way to guarantee the LLM follows these strict rules is to provide a complete, valid, perfectly flat JSON example file in the agent's system prompt and instruct the LLM to strictly output that exact structure. Relying purely on English layout instructions often leads to LLM hallucinations.
-
-5. ROBUST BACKEND DATE PARSING FOR DateTimeInput (Fixes tool crashes)
-When the user submits a form using `DateTimeInput`, the frontend sends the date as a full ISO-8601 string (e.g., `"2026-09-10T20:20:20.456Z"`). When this is bound to a tool parameter using A2UI data bindings (like `{"path": "/application/from_date"}`), the python backend receives the full timestamp verbatim.
-Python tools MUST NOT use strict date parsing like `date.fromisoformat(from_date)`. They must robustly extract the date, either by slicing the string (`from_date[:10]`) or using `datetime.fromisoformat(...)`, otherwise the backend will crash and the LLM will get confused.
-
-6. BUTTON ACTION SCHEMA (Fixes "Validation failed for component 'Button': action: Invalid input")
-In A2UI v0.9, the `action` property on a Button MUST strictly be wrapped in an `event` object. It cannot be flattened.
+`{"createSurface": {"surfaceId": "...", "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"}}`
+`{"updateComponents": {"surfaceId": "...", "components": [{"component": "MaterialColumn", "id": "root", "children": ["btn1"]}, {"component": "MaterialButton", "id": "btn1", ...}]}}`
+2. MATERIAL COMPONENT NAMES (Fixes "Component type not found")
+All component type names must be exactly matched to the Material catalog.
+CORRECT: `MaterialColumn`, `MaterialRow`, `MaterialText`, `MaterialButton`, `MaterialInput`, `MaterialDatepicker`, `MaterialTimepicker`, `MaterialCard`, `MaterialChips`, `MaterialIcon`, `MaterialDivider`, `MaterialCheckbox`.
+INCORRECT: `Column`, `Row`, `Text`, `Button`
+3. BUTTON TEXT (Fixes "Validation failed: Unrecognized key 'text'")
+In the Material Catalog, a `MaterialButton` component requires a `"label"` property. Do NOT create a child `MaterialText` for the label.
+INCORRECT: `{ "component": "MaterialButton", "child": "my_btn_txt" }`
+CORRECT: `{ "component": "MaterialButton", "id": "my_btn", "label": "Submit" }`
+4. TEXT USAGE HINT
+`MaterialText` uses `usageHint` (NOT `variant`). Valid values are strictly `"h1"`, `"h2"`, `"h3"`, `"h4"`, `"h5"`, `"caption"`, `"body"` (`"body"` is the default). Do NOT invent any other value.
+5. CARD CHILDREN
+`MaterialCard` takes a `children` ARRAY (NOT a single `child` string). Even for one child, write `"children": ["some_id"]`.
+6. ICON PROPERTY
+The property for `MaterialIcon` is `icon` (NOT `name`).
+7. CHIPS CAPTIONS
+`MaterialChips` has NO `label` property. Put the caption in a sibling `MaterialText`.
+8. CHECKBOX
+`MaterialCheckbox`: bind state to `checked` (NOT `value`).
+9. DATE AND TIME FIELDS
+Whenever a form requires a date or time selection, you MUST use `MaterialDatepicker` or `MaterialTimepicker` components. There is no combined DateTimeInput and no `enableDate`/`enableTime` flags.
+10. EXPLICIT VALUE BINDING ON INPUTS
+An input component (like `MaterialInput` or `MaterialDatepicker`) DOES NOT automatically sync its value to the data model just by existing. You MUST explicitly provide a `"value": {"path": "/..."}` data binding on the input component itself.
+11. BUTTON ACTION SCHEMA (Fixes "Validation failed for component 'Button': action: Invalid input")
+The `action` property on a Button MUST strictly be wrapped in an `event` object.
 INCORRECT: `"action": { "tool": "add_todo", "context": { ... } }`
 CORRECT: `"action": { "event": { "name": "add_todo", "context": { ... } } }`
-
-7. SURFACE REDRAWING LIFECYCLE (Fixes "Surface not found for message")
-When dynamically adding or removing elements from the UI (like adding an item to a list), the LLM must completely redraw the UI surface with a NEW surface ID. It MUST NOT reuse the old surface ID across turns.
-To do this safely, the LLM must be explicitly instructed in the system prompt to output three mutations in order when updating: 
-2. `createSurface` for a BRAND NEW, UNIQUE surface ID.
-3. `updateComponents` rendering the entire updated UI into the new surface ID.
-
-8. EXPLICIT VALUE BINDING ON INPUTS (Fixes "context: {parameter: undefined}")
-In A2UI v0.9, an input component (like `TextField` or `DateTimeInput`) DOES NOT automatically sync its value to the data model just by existing. You MUST explicitly provide a `"value": {"path": "/..."}` data binding on the input component itself so the frontend knows where to store the text the user types.
-INCORRECT:
-`{"component": "TextField", "id": "my_input"}`
-CORRECT:
-`{"component": "TextField", "id": "my_input", "value": {"path": "/application/my_input"}}`
-
-9. NO "PROPS" WRAPPER OBJECT (CRITICAL)
-In A2UI v0.9, there is NO `props` wrapper. All properties like `alignItems`, `variant`, `weight`, etc., MUST be placed directly at the ROOT of the component object.
-INCORRECT:
-`{"component": "Column", "id": "root", "props": {"alignItems": "center"}}`
-CORRECT:
-`{"component": "Column", "id": "root", "alignItems": "center"}`
-
-10. TEXTFIELD PLACEHOLDERS
-`TextField` components in A2UI v0.9 do NOT support a `placeholder` property. Instead, you MUST use the `"label"` property placed at the root of the component.
-INCORRECT:
-`{"component": "TextField", "id": "input", "placeholder": "Enter text"}`
-CORRECT:
-`{"component": "TextField", "id": "input", "label": "Enter text"}`
-
-11. NO CSS, SIZING, OR ALIGNMENT PROPERTIES
-A2UI v0.9 Basic Catalog does NOT support `padding`, `margin`, `spacing`, `gap`, `justifyContent`, `alignItems`, `width`, or `height` properties on ANY components. Do NOT hallucinate these properties.
-INCORRECT: `{"component": "Column", "padding": "medium", "justifyContent": "center"}`
-CORRECT: `{"component": "Column"}`
-
-12. IMAGE COMPONENTS
-The `Image` component strictly accepts ONLY `id` and `url`. Do NOT hallucinate `width`, `height`, `alt`, or styling.
-INCORRECT: `{"component": "Image", "id": "img", "url": "...", "width": "100px"}`
-CORRECT: `{"component": "Image", "id": "img", "url": "..."}`
-
-13. NUMBER FIELDS
-Whenever a form requires a number (like quantity or age), you MUST use a TextField with the variant set to number. Example: {"component": "TextField", "id": "qty", "variant": "number", "label": "Quantity"}
-
-14. TIME FIELDS
-Whenever a form requires a time selection, you MUST strictly use the DateTimeInput component with enableTime set to true and enableDate set to false. NOTE: DateTimeInput does not support a label property in A2UI v0.9, so you must place a separate Text component above it to act as its label. Example: {"component": "DateTimeInput", "id": "time_picker", "enableTime": true, "enableDate": false}
-
-15. BUTTON ALIGNMENT IN LISTS (Flexbox Symmetry) 
-When designing a list item (like a Row) containing text on the left and an action button on the right, you MUST make the layout symmetrical by pushing the button to the far right edge. You achieve this by wrapping the text in a Column and adding "weight": 1 to that Column. This makes the text column fill the empty space. Example: {"component": "Column", "id": "text_col", "weight": 1, "children": [...]}
-
-
-17. PROMPT ENGINEERING FOR TOOL CALLS (Fixes LLM skipping tool execution)
-- System prompts that heavily command the LLM to output text or provide comprehensive JSON examples might make the LLM think it doesn't need to use the tool.
-- Solution: Explicitly inject overriding instructions in the agent's prompt to force tool execution first.
-
-18. THE @TOOL DECORATOR
-- Do NOT import `@tool` from `google.adk.tools`. When using `genai_client.chats.create(...)`, you must pass raw, undecorated Python functions directly into the `tools=[...]` array.
-
-19. DROPDOWN MENUS (ChoicePicker)
-A2UI v0.9 has NO <select> component. For any dropdown / "pick one from a list" UI you MUST use `ChoicePicker`.
+12. SURFACE REDRAWING LIFECYCLE (Fixes "Surface not found for message")
+When dynamically adding or removing elements from the UI, the LLM must completely redraw the UI surface with a NEW surface ID. It MUST NOT reuse the old surface ID across turns.
+To do this safely, output two mutations in order: 
+1. `createSurface` for a BRAND NEW, UNIQUE surface ID.
+2. `updateComponents` rendering the entire updated UI into the new surface ID.
+13. NO SIZING PROPS
+A2UI v0.9 Material Catalog does NOT support `padding`, `margin`, `spacing`, `gap`, `justifyContent`, `alignItems`, `width`, or `height` properties on ANY components. Do NOT hallucinate these properties.
+14. NUMBER FIELDS
+Whenever a form requires a number (like quantity or age), you MUST use a `MaterialInput` with the type set to number.
+15. PROMPT ENGINEERING FOR TOOL CALLS
+Explicitly inject overriding instructions in the agent's prompt to force tool execution first before rendering a UI.
+16. DROPDOWN MENUS
+For any dropdown / "pick one from a list" UI you MUST use `MaterialChips`.
 - `options` MUST be a literal JSON array of {"label": "...", "value": "..."} objects. It can NEVER be a "${...}" string.
-- `variant` is "mutuallyExclusive" for single-select (default) or "multipleSelection" for multi-select.
 - `value` MUST be bound: "value": {"path": "/application/your_field"}
-- The frontend writes a string ARRAY to that path (e.g. ["alice_martin"]) even for single-select.
-  Therefore any tools.py function receiving it MUST normalize: `if isinstance(x, list): x = x[0] if x else ""`
-CORRECT:
-{"component": "ChoicePicker", "id": "doc", "label": "Select a Doctor", "variant": "mutuallyExclusive",
- "options": [{"label": "Dr. Alice", "value": "alice"}, {"label": "Dr. Bob", "value": "bob"}],
- "value": {"path": "/application/doctor"}}
 =========================================
 """
-
-# Rule 20 is generated from the live catalog enum rather than hand-written, so
-# the allow-list can never drift from the installed spec.
-#
-# This rule was missing entirely: the icon allow-list lived only in
-# A2UI_BOILERPLATE_PROMPT (which is injected into the GENERATED agent), so the
-# Coder writing the JSON templates had never been told which names are legal.
+# 5. Replace Icon Enums rule (around line 363)
 A2UI_STRICT_RULES += (
-    "\n20. ICON NAMES (Fixes \"Field validation failed for component 'Icon': name: Invalid input\")\n"
-    "The `Icon` component's `name` MUST be one of the catalog's camelCase names.\n"
-    "Material Design snake_case names DO NOT EXIST in A2UI and will crash the React\n"
-    "frontend and render a broken glyph in Angular.\n"
-    'INCORRECT: "calendar_month", "medical_services", "play_arrow", "check_circle", "local_hospital"\n'
-    'CORRECT:   "calendarToday", "favorite", "play", "check", "accountCircle"\n'
+    "\n17. ICON NAMES\n"
+    "The `MaterialIcon` component's `icon` MUST be one of the catalog's camelCase names.\n"
     "The COMPLETE list of valid names - you MUST pick from these and nothing else:\n"
     + ", ".join(sorted(VALID_ICON_NAMES))
     + "\nIf no icon fits your domain exactly, choose the closest generic one\n"

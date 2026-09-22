@@ -24,6 +24,8 @@ A2UI_BOILERPLATE_PROMPT = r"""
 - **NEVER OUTPUT `<a2a_datapart_json>` TAGS**: You MUST NEVER use `<a2a_datapart_json>` or wrap messages in `{"kind": "data", ...}` envelopes. ALWAYS output standard `<a2ui-json>...</a2ui-json>` blocks.
 - **STRICT COMPLIANCE WITH A2UI V0.9 SPECIFICATION:** You MUST strictly adhere to the A2UI V0.9 Basic Catalog specification for component properties and schemas. Review the provided template JSON files for precise details. Ensure all component properties, data bindings, and catalog references are valid and correctly formatted according to the A2UI specification.
 - **HANDLING EMPTY INPUTS**: If the user sends an empty message, or triggers an action without filling in the required form fields, you MUST NOT hallucinate data or crash. Instead, respond with a polite companion Markdown message asking them to provide the missing information.
+- **MANDATORY CARD ON TOOL FAILURE**: If a tool returns an `error` (or any failure result), you MUST STILL output a full `<a2ui-json>` block. Re-render the CURRENT view onto a BRAND NEW, UNIQUE `surfaceId` using its original JSON template, and surface the error text to the user inside that card (for example, as a `Text` component with `variant` `"caption"`, optionally preceded by an `Icon` named `"error"`). You MUST NEVER respond to a tool failure with companion Markdown alone. A reply without an `<a2ui-json>` block leaves the user with a blank screen.
+
 """
 
 def extract_file_content(response_text, filename):

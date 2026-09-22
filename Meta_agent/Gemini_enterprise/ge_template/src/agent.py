@@ -21,16 +21,29 @@ from google.genai import types
 from a2ui.schema import common_modifiers
 from a2ui.schema import constants as a2ui_constants
 from a2ui.schema import manager as a2ui_schema_manager
-from a2ui.basic_catalog.provider import BasicCatalog
+# from a2ui.basic_catalog.provider import BasicCatalog
+from a2ui.schema.catalog import CatalogConfig
 
 from . import a2ui_utils
 from .config import config
 from .prompt import ROLE_DESCRIPTION, UI_DESCRIPTION
 from . import tools
 
+from google.adk.apps.app import App, EventsCompactionConfig
+
 _EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "examples/v0_9")
-_CATALOG_CONFIG = BasicCatalog.get_config(
-    version=a2ui_constants.VERSION_0_9,
+# _CATALOG_CONFIG = BasicCatalog.get_config(
+#     version=a2ui_constants.VERSION_0_9,
+#     examples_path=_EXAMPLES_DIR,
+# )
+# Google publishes no machine-readable Material catalog schema (the spec URL
+# 404s), so we load the reconstruction produced by gen_material_catalog.py.
+_CATALOG_PATH = os.path.join(
+    os.path.dirname(__file__), "catalogs", "material_catalog.json"
+)
+_CATALOG_CONFIG = CatalogConfig.from_path(
+    name="material",
+    catalog_path=_CATALOG_PATH,
     examples_path=_EXAMPLES_DIR,
 )
 
@@ -66,7 +79,20 @@ root_agent = llm_agent.LlmAgent(
     before_model_callback=a2ui_utils.a2ui_before_model_callback,
     after_tool_callback=a2ui_utils.a2ui_after_tool_callback,
     generate_content_config=types.GenerateContentConfig(
-        max_output_tokens=8192,
+        max_output_tokens=65536,
         temperature=0.2,
     ),
 )
+
+# Wrap the agent in an App with compaction
+app = App(
+    name=config.agent_id,
+    root_agent=root_agent,
+    events_compaction_config=EventsCompactionConfig(
+        compaction_interval=3,   # compact every 3 user turns
+        overlap_size=1,          # keep 1 turn of overlap for context
+        token_threshold=30000,   # also compact if prompt exceeds 16k tokens
+        event_retention_size=6,  # keep last 6 raw events un-compacted
+    ),
+)
+

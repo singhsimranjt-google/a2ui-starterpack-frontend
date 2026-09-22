@@ -14,7 +14,90 @@
 # limitations under the License.
 """Clinic Scheduling Agent Tools."""
 
-from datetime import datetime, time
+from datetime import date as date_cls, datetime, time
+from typing import Optional
+
+# --- Date/time parsing -------------------------------------------------------
+# The DateTimeInput widgets emit ISO-8601, which is what we normally receive.
+# But the user can also type a date in chat ("10/21/2026", "2:30PM"), in which
+# case the model forwards that string verbatim. datetime.fromisoformat() rejects
+# those, so we fall back to a list of common human formats before giving up.
+#
+# NOTE: day/month order is genuinely ambiguous for inputs like "01/02/2026".
+# We try US month-first ordering before day-first, matching the en-US locale the
+# UI is written in. An unambiguous input such as "21/10/2026" still parses
+# correctly because month=21 is invalid and that candidate is skipped.
+
+_DATE_FORMATS = (
+    "%Y-%m-%d",
+    "%Y/%m/%d",
+    "%m/%d/%Y",
+    "%d/%m/%Y",
+    "%m-%d-%Y",
+    "%d-%m-%Y",
+    "%B %d, %Y",
+    "%B %d %Y",
+    "%b %d, %Y",
+    "%b %d %Y",
+    "%d %B %Y",
+    "%d %b %Y",
+)
+
+_TIME_FORMATS = (
+    "%H:%M",
+    "%H:%M:%S",
+    "%I:%M %p",
+    "%I:%M%p",
+    "%I %p",
+    "%I%p",
+)
+
+
+def _parse_date(value: str) -> Optional[date_cls]:
+    """Parses a date from ISO-8601 or a common human format. None if unparseable."""
+    if not isinstance(value, str):
+        return None
+    raw = value.strip().replace("Z", "+00:00")
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(raw).date()
+    except ValueError:
+        pass
+    for fmt in _DATE_FORMATS:
+        try:
+            return datetime.strptime(raw, fmt).date()
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_time(value: str) -> Optional[time]:
+    """Parses a time from ISO-8601 or a common human format. None if unparseable."""
+    if not isinstance(value, str):
+        return None
+    raw = value.strip().replace("Z", "+00:00")
+    if not raw:
+        return None
+    # Time-only ISO ("14:30"), then full ISO datetime ("2026-10-21T14:30:00").
+    try:
+        return time.fromisoformat(raw)
+    except ValueError:
+        pass
+    try:
+        return datetime.fromisoformat(raw).time()
+    except ValueError:
+        pass
+    # "2:30PM" and "2:30 pm" differ only by case/space; normalise both.
+    candidates = (raw, raw.upper(), raw.replace(" ", "").upper())
+    for fmt in _TIME_FORMATS:
+        for candidate in candidates:
+            try:
+                return datetime.strptime(candidate, fmt).time()
+            except ValueError:
+                continue
+    return None
+
 
 # --- Mock Data ---
 DOCTORS = {
@@ -129,26 +212,31 @@ def confirm_appointment(
     if isinstance(doctor, list):
         doctor = doctor[0] if doctor else ""
 
-    # DateTimeInput sends an ISO string. The date picker (enableTime=false)
-    # sends a full datetime; the time picker (enableDate=false) sends a
-    # time-only value, which datetime.fromisoformat cannot parse.
-    try:
-        if not appointment_date or not appointment_time:
-            raise ValueError("Missing date or time")
-        # Extract YYYY-MM-DD
-        formatted_date = datetime.fromisoformat(appointment_date.replace("Z", "+00:00")).strftime("%B %d, %Y")
-        
-        # Extract HH:MM AM/PM, accepting either "14:30" or a full datetime.
-        raw_time = (appointment_time or "").replace("Z", "+00:00")
-        try:
-            parsed_time = time.fromisoformat(raw_time)
-        except ValueError:
-            parsed_time = datetime.fromisoformat(raw_time)
-        formatted_time = parsed_time.strftime("%I:%M %p")
-    except (ValueError, TypeError, AttributeError):
-        result = {"error": "Please select a date and time in the UI before confirming."}
-    # # print(f"Returns: {result}\n--------------------------------------\n")
-        return result
+    # Accept both the widget's ISO-8601 output and anything the user typed in
+    # chat. _parse_date/_parse_time return None rather than raising.
+    parsed_date = _parse_date(appointment_date)
+    parsed_time = _parse_time(appointment_time)
+
+    if parsed_date is None or parsed_time is None:
+        # Name the field that actually failed so the model can re-prompt for
+        # just that one instead of resetting the whole form.
+        if parsed_date is None and parsed_time is None:
+            missing = "date and time"
+        elif parsed_date is None:
+            missing = "date"
+        else:
+            missing = "time"
+        return {
+            "error": (
+                f"Could not understand the appointment {missing} "
+                f"(date={appointment_date!r}, time={appointment_time!r}). "
+                "Please select a date and time in the UI, or give the date as "
+                "YYYY-MM-DD and the time as HH:MM."
+            )
+        }
+
+    formatted_date = parsed_date.strftime("%B %d, %Y")
+    formatted_time = parsed_time.strftime("%I:%M %p")
 
     result = {
         "status": "confirmed",

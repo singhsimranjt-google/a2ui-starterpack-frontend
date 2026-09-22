@@ -1,0 +1,93 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "clinic_confirm_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "clinic_confirm_surface",
+      "components": [
+        {
+          "component": "MaterialColumn",
+          "id": "root",
+          "children": [
+            "confirm_card"
+          ]
+        },
+        {
+          "component": "MaterialCard",
+          "id": "confirm_card",
+          "children": [
+            "confirm_content"
+          ]
+        },
+        {
+          "component": "MaterialColumn",
+          "id": "confirm_content",
+          "children": [
+            "icon_row",
+            "details_doctor",
+            "details_patient",
+            "details_date",
+            "details_time",
+            "home_btn"
+          ]
+        },
+        {
+          "component": "MaterialRow",
+          "id": "icon_row",
+          "children": [
+            "confirm_icon",
+            "confirm_header"
+          ]
+        },
+        {
+          "component": "MaterialIcon",
+          "id": "confirm_icon",
+          "icon": "check"
+        },
+        {
+          "component": "MaterialText",
+          "id": "confirm_header",
+          "text": "Appointment Confirmed!",
+          "usageHint": "h4"
+        },
+        {
+          "component": "MaterialText",
+          "id": "details_doctor",
+          "text": "Doctor: Dr. Alice Martin"
+        },
+        {
+          "component": "MaterialText",
+          "id": "details_patient",
+          "text": "Patient: Jane Doe"
+        },
+        {
+          "component": "MaterialText",
+          "id": "details_date",
+          "text": "Date: September 24, 2026"
+        },
+        {
+          "component": "MaterialText",
+          "id": "details_time",
+          "text": "Time: 10:30 AM"
+        },
+        {
+          "component": "MaterialButton",
+          "id": "home_btn",
+          "action": {
+            "event": {
+              "name": "reset_to_departments"
+            }
+          },
+          "label": "Return to Home",
+          "variant": "primary"
+        }
+      ]
+    }
+  }
+]
