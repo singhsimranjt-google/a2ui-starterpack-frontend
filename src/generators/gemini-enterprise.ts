@@ -25,12 +25,12 @@ export class GeminiEnterpriseGenerator extends BaseGenerator {
 
   protected async postProcess(targetDir: string, config: ProjectConfig): Promise<void> {
     if (config.useMetaAgent && config.authConfig) {
-      const ok = await runMetaAgent({
+      const result = await runMetaAgent({
         variant: 'gemini-enterprise',
         authEnv: config.authConfig,
         targetDir
       });
-      if (!ok) throw new Error('Meta-agent generation failed.');
+      if (!result) throw new Error('Meta-agent generation failed.');
     }
 
     if (config.authConfig) {
@@ -57,8 +57,9 @@ export class GeminiEnterpriseGenerator extends BaseGenerator {
     return [
       `cd ${config.projectName}`,
       'uv sync',
-      'uv run python src/agent.py  # Test GE Agent and UI card renderer',
-      'uv run pytest  # Run test suite'
+      'adk web .  # Chat with the agent in the ADK dev UI',
+      '# When you are happy with it, deploy to Agent Engine:',
+      './deploy_agent_engine.sh'
     ];
   }
 }

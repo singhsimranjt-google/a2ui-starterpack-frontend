@@ -11,6 +11,9 @@ export class FullStackGenerator implements IGenerator {
   readonly name = 'Full Stack (Frontend + Google ADK Python Backend)';
   readonly description = 'Composable full-stack application with frontend client and Python agent backend';
 
+  /** Backend agent package name, captured from the PythonGenerator after it runs. */
+  private backendModule = 'agent';
+
   getPrerequisites(config: ProjectConfig): PrerequisiteRequirement[] {
     const feGen = config.frontendFramework === 'angular' ? new AngularGenerator() : new ReactGenerator();
     const beGen = new PythonGenerator();
@@ -51,6 +54,7 @@ export class FullStackGenerator implements IGenerator {
       };
       const beResult = await beGenerator.generate(backendDir, beConfig);
       if (!beResult.success) throw beResult.error || new Error('Backend generation failed');
+      this.backendModule = beGenerator.agentPackage;
       generatedFiles.push(...beResult.generatedFiles);
 
       // 3. Scaffold Root Orchestrator files
@@ -86,7 +90,7 @@ export class FullStackGenerator implements IGenerator {
     return [
       `cd ${config.projectName}`,
       '# Terminal 1: Start Backend Agent Server',
-      'cd backend && cp .env.example .env && uv sync && uv run uvicorn weather_agent.server:app --reload --port 8080',
+      `cd backend && uv sync && uv run uvicorn ${this.backendModule}.server:app --reload --port 8080`,
       '# Terminal 2: Start Frontend Client',
       `cd frontend && npm install --legacy-peer-deps && ${isAngular ? 'npm start' : 'npm run dev'}`,
       '# Or install everything from root: npm run install:all'

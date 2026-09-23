@@ -305,6 +305,15 @@ Explicitly inject overriding instructions in the agent's prompt to force tool ex
 For any dropdown / "pick one from a list" UI you MUST use `MaterialChips`.
 - `options` MUST be a literal JSON array of {"label": "...", "value": "..."} objects. It can NEVER be a "${...}" string.
 - `value` MUST be bound: "value": {"path": "/application/your_field"}
+ - `value` MUST be bound: "value": {"path": "/application/your_field"}
+- The frontend writes a string ARRAY to that path (e.g. ["alice_martin"]) even for single-select.
+  Therefore any tools.py function receiving it MUST normalize: `if isinstance(x, list): x = x[0] if x else ""`
+- CRITICAL: annotate that parameter as plain `str`, NEVER `str | List[str]` or any
+  union containing a subscripted generic. ADK runs isinstance() against the annotation,
+  and `isinstance(["x"], str | List[str])` raises
+  "TypeError: Subscripted generics cannot be used with class and instance checks".
+  Declare `category: str` and do the list normalization inside the function body.
+
 =========================================
 """
 # 5. Replace Icon Enums rule (around line 363)

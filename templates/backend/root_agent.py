@@ -353,10 +353,27 @@ A2UI v0.9 has NO <select> component. For any dropdown / "pick one from a list" U
 - `value` MUST be bound: "value": {"path": "/application/your_field"}
 - The frontend writes a string ARRAY to that path (e.g. ["alice_martin"]) even for single-select.
   Therefore any tools.py function receiving it MUST normalize: `if isinstance(x, list): x = x[0] if x else ""`
+- CRITICAL: annotate that parameter as plain `str`, NEVER `str | List[str]` or any
+  union containing a subscripted generic. ADK runs isinstance() against the annotation,
+  and `isinstance(["x"], str | List[str])` raises
+  "TypeError: Subscripted generics cannot be used with class and instance checks".
+  Declare `category: str` and do the list normalization inside the function body.
+
 CORRECT:
 {"component": "ChoicePicker", "id": "doc", "label": "Select a Doctor", "variant": "mutuallyExclusive",
  "options": [{"label": "Dr. Alice", "value": "alice"}, {"label": "Dr. Bob", "value": "bob"}],
  "value": {"path": "/application/doctor"}}
+20. COMPONENT VARIANTS
+`variant` is a strict enum per component. NEVER invent values, and NEVER borrow
+Material Design names such as "outlined", "contained", "filled", "elevated", or "tonal".
+The ONLY legal values are:
+- Text:          h1, h2, h3, h4, h5, caption, body
+- Button:        default, primary, borderless   (use "borderless" for secondary/cancel actions)
+- TextField:     longText, number, shortText, obscured
+- ChoicePicker:  multipleSelection, mutuallyExclusive
+- Image:         icon, avatar, smallFeature, mediumFeature, largeFeature, header
+If unsure, OMIT the variant property entirely - every component has a sane default.
+
 =========================================
 """
 
@@ -776,6 +793,12 @@ A2UI v0.9 has NO <select> component. For any dropdown / "pick one from a list" U
 - `value` MUST be bound: "value": {"path": "/application/your_field"}
 - The frontend writes a string ARRAY to that path (e.g. ["alice_martin"]) even for single-select.
   Therefore any tools.py function receiving it MUST normalize: `if isinstance(x, list): x = x[0] if x else ""`
+- CRITICAL: annotate that parameter as plain `str`, NEVER `str | List[str]` or any
+  union containing a subscripted generic. ADK runs isinstance() against the annotation,
+  and `isinstance(["x"], str | List[str])` raises
+  "TypeError: Subscripted generics cannot be used with class and instance checks".
+  Declare `category: str` and do the list normalization inside the function body.
+
 CORRECT:
 {"component": "ChoicePicker", "id": "doc", "label": "Select a Doctor", "variant": "mutuallyExclusive",
  "options": [{"label": "Dr. Alice", "value": "alice"}, {"label": "Dr. Bob", "value": "bob"}],

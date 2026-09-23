@@ -15,6 +15,14 @@ export class PythonGenerator extends BaseGenerator {
   // BaseGenerator's abstract member.
   protected readonly templateSubdir = '';
 
+  /** Set by postProcess() from the meta-agent's actual output directory name. */
+  private agentModule = 'agent';
+
+  /** The generated agent's package name. Valid only after generate() resolves. */
+  get agentPackage(): string {
+    return this.agentModule;
+  }
+
   getPrerequisites(config: ProjectConfig): PrerequisiteRequirement[] {
     return [
       COMMON_PREREQUISITES.python,
@@ -24,12 +32,13 @@ export class PythonGenerator extends BaseGenerator {
 
   protected async postProcess(targetDir: string, config: ProjectConfig): Promise<void> {
     if (config.useMetaAgent && config.authConfig) {
-      const ok = await runMetaAgent({
+      const result = await runMetaAgent({
         variant: 'adk-a2ui',
         authEnv: config.authConfig,
         targetDir
       });
-      if (!ok) throw new Error('Meta-agent generation failed.');
+      if (!result) throw new Error('Meta-agent generation failed.');
+      this.agentModule = result.agentName;
     }
 
     if (config.authConfig) {
@@ -56,7 +65,7 @@ export class PythonGenerator extends BaseGenerator {
     return [
       `cd ${config.projectName}`,
       'uv sync',
-      'uv run uvicorn weather_agent.server:app --reload --port 8080  # Start API server'
+      `uv run uvicorn ${this.agentModule}.server:app --reload --port 8080  # Start API server`
     ];
   }
 }
