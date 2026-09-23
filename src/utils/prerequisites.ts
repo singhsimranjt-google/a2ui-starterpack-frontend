@@ -59,5 +59,12 @@ export const COMMON_PREREQUISITES: Record<string, PrerequisiteRequirement> = {
     args: ['--version'],
     required: true,
     installGuide: 'Install uv via `curl -LsSf https://astral.sh/uv/install.sh | sh` or `brew install uv`'
-  }
+  },
+  gcloud: {
+    name: 'Google Cloud CLI',
+    command: 'gcloud',
+    args: ['--version'],
+    required: false,
+    installGuide: 'Install from https://cloud.google.com/sdk/docs/install (needed for Argolis/Vertex auth)'
+  },
 };

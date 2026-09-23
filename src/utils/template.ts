@@ -3,25 +3,18 @@ import path from 'path';
 import { formatProjectTitle } from './validation';
 
 export function getTemplateRoot(): string {
-  // Check dist/templates first (when running compiled binary)
-  const distTemplates = path.resolve(__dirname, '../../templates');
-  if (fs.existsSync(distTemplates)) {
-    return distTemplates;
-  }
+  // Compiled: dist/utils/template.js -> dist/templates
+  const bundled = path.resolve(__dirname, '../templates');
+  if (fs.existsSync(bundled)) return bundled;
 
-  // Check direct templates dir (in development)
-  const devTemplates = path.resolve(__dirname, '../templates');
-  if (fs.existsSync(devTemplates)) {
-    return devTemplates;
-  }
+  // tsx/ts-node dev: src/utils/template.ts -> <pkg>/dist/templates
+  const devBundled = path.resolve(__dirname, '../../dist/templates');
+  if (fs.existsSync(devBundled)) return devBundled;
 
-  // Fallback to project root templates
-  const rootTemplates = path.resolve(__dirname, '../../../../templates');
-  if (fs.existsSync(rootTemplates)) {
-    return rootTemplates;
-  }
-
-  return distTemplates;
+  // NOTE: never fall back to <pkg>/templates. That is the *source* tree
+  // (frontend/, backend/, gemini_enterprise/) and has a different layout
+  // from the bundled output. Run `npm run build` instead.
+  return bundled;
 }
 
 export function copyTemplateFiles(

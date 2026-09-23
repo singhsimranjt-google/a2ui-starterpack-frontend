@@ -35,7 +35,8 @@ export class FullStackGenerator implements IGenerator {
       const feConfig: ProjectConfig = {
         ...config,
         projectName: `${config.projectName}-frontend`,
-        targetDir: frontendDir
+        targetDir: frontendDir,
+        useMetaAgent: false
       };
       const feResult = await feGenerator.generate(frontendDir, feConfig);
       if (!feResult.success) throw feResult.error || new Error('Frontend generation failed');

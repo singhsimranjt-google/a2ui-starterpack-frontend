@@ -1,0 +1,108 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "clinic_schedule_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "clinic_schedule_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "schedule_card"
+          ]
+        },
+        {
+          "component": "Card",
+          "id": "schedule_card",
+          "child": "schedule_content"
+        },
+        {
+          "component": "Column",
+          "id": "schedule_content",
+          "children": [
+            "schedule_header",
+            "schedule_subheader",
+            "date_label",
+            "date_picker",
+            "time_label",
+            "time_picker",
+            "confirm_btn"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "schedule_header",
+          "variant": "h4",
+          "text": "Schedule Appointment"
+        },
+        {
+          "component": "Text",
+          "id": "schedule_subheader",
+          "variant": "body",
+          "text": "Booking for Jane Doe with Dr. Alice Martin"
+        },
+        {
+          "component": "Text",
+          "id": "date_label",
+          "text": "Preferred Date"
+        },
+        {
+          "component": "DateTimeInput",
+          "id": "date_picker",
+          "enableDate": true,
+          "enableTime": false,
+          "value": {
+            "path": "/application/appointment_date"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "time_label",
+          "text": "Preferred Time"
+        },
+        {
+          "component": "DateTimeInput",
+          "id": "time_picker",
+          "enableDate": false,
+          "enableTime": true,
+          "value": {
+            "path": "/application/appointment_time"
+          }
+        },
+        {
+          "component": "Button",
+          "id": "confirm_btn",
+          "child": "confirm_btn_txt",
+          "action": {
+            "event": {
+              "name": "confirm_appointment",
+              "context": {
+                "doctor": "${result.doctor}",
+                "patient_name": "${result.patient_name}",
+                "appointment_date": {
+                  "path": "/application/appointment_date"
+                },
+                "appointment_time": {
+                  "path": "/application/appointment_time"
+                }
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "confirm_btn_txt",
+          "text": "Confirm Appointment"
+        }
+      ]
+    },
+    "version": "v0.9"
+  }
+]

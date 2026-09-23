@@ -13,11 +13,12 @@ export abstract class BaseGenerator implements IGenerator {
 
   async generate(targetDir: string, config: ProjectConfig): Promise<GenerationResult> {
     try {
-      const templateRoot = getTemplateRoot();
-      const templateDir = path.join(templateRoot, this.templateSubdir);
+      let generatedFiles: string[] = [];
 
-      const variables = this.getVariables(config);
-      const generatedFiles = copyTemplateFiles(templateDir, targetDir, variables);
+      if (!config.useMetaAgent) {
+        const templateDir = path.join(getTemplateRoot(), this.templateSubdir);
+        generatedFiles = copyTemplateFiles(templateDir, targetDir, this.getVariables(config));
+      }
 
       await this.postProcess(targetDir, config);
 

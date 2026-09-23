@@ -1,4 +1,4 @@
-export type ProjectType = 'frontend' | 'python' | 'fullstack';
+export type ProjectType = 'frontend' | 'python' | 'fullstack' | 'gemini-enterprise';
 
 export type FrontendFramework = 'angular' | 'react';
 
@@ -11,14 +11,23 @@ export interface EnvConfig {
   gcpLocation?: string;
 }
 
+
+export type AuthMode = 'api-key' | 'vertex-adc';
+
+export type AuthConfig =
+  | { mode: 'api-key';    geminiApiKey: string }
+  | { mode: 'vertex-adc'; gcpProject: string; gcpLocation: string };
+
 export interface ProjectConfig {
+  projectName: string;
   projectType: ProjectType;
+  targetDir: string;
   frontendFramework?: FrontendFramework;
   pythonRendererType?: PythonRendererType;
-  projectName: string;
-  targetDir: string;
-  envConfig?: EnvConfig;
+  useMetaAgent?: boolean;
+  authConfig?: AuthConfig;
 }
+
 
 export interface PrerequisiteRequirement {
   name: string;

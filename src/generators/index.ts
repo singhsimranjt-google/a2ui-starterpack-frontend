@@ -20,6 +20,10 @@ export function resolveGenerator(config: ProjectConfig): IGenerator {
     return new PythonGenerator();
   }
 
+  if (config.projectType === 'gemini-enterprise') {
+    return new GeminiEnterpriseGenerator();
+  }
+
   if (config.projectType === 'fullstack') {
     return new FullStackGenerator();
   }

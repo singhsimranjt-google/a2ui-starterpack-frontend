@@ -20,7 +20,9 @@ export async function runCli(overrideConfig?: Partial<ProjectConfig>): Promise<v
         frontendFramework: overrideConfig.frontendFramework,
         pythonRendererType: overrideConfig.pythonRendererType,
         projectName,
-        targetDir: overrideConfig.targetDir || path.resolve(process.cwd(), projectName)
+        targetDir: overrideConfig.targetDir || path.resolve(process.cwd(), projectName),
+        useMetaAgent: overrideConfig.useMetaAgent,
+        authConfig: overrideConfig.authConfig
       };
     } else {
       config = await promptProjectConfig();
