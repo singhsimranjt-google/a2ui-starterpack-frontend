@@ -140,6 +140,7 @@ A2UI_BOILERPLATE_PROMPT = r"""
 - **MANDATORY TEMPLATE FIDELITY (Material Catalog v0.9)**:
   - You MUST refer directly to the provided example JSON files in your system instructions when generating A2UI cards.
   - The `catalogId` in `createSurface` MUST strictly be `"https://a2ui.org/specification/v0_9/material_catalog.json"`.
+  - EVERY message object in the array (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) MUST include `"version": "v0.9"` as a top-level key, e.g. `{"version": "v0.9", "createSurface": {...}}`. Omitting it fails schema validation and the server will not start.
   - You MUST strictly follow the exact component hierarchy, component types (`MaterialCard`, `MaterialColumn`, `MaterialRow`, `MaterialText`, `MaterialIcon`, `MaterialDivider`, `MaterialButton`, `MaterialInput`, `MaterialChips`, `MaterialCheckbox`, `MaterialDatepicker`, `MaterialTimepicker`), and allowed properties defined in each example JSON file without adding any extra or invalid attributes.
   - **NO STYLING OR SIZING PROPERTIES**: Do NOT include `"style"`, `"padding"`, `"margin"`, `"spacing"`, `"gap"`, `"justifyContent"`, `"alignItems"`, `"width"`, or `"height"` on any components. All components must strictly conform to Material Catalog schema.
   - `MaterialText`: uses `usageHint` (NOT `variant`). Valid values are strictly `"h1"`, `"h2"`, `"h3"`, `"h4"`, `"h5"`, `"caption"`, `"body"` (`"body"` is the default). Do NOT invent any other value.
@@ -418,7 +419,18 @@ def validate_generated_code(response_text):
         except ValueError as exc:
             errors.append(f"{filename}: INVALID JSON - {exc}")
             continue
-
+        
+        # Every A2UI message must carry "version": "v0.9"; the SDK's
+        # validate_examples=True rejects the file (and the server won't boot).
+        messages = parsed if isinstance(parsed, list) else [parsed]
+        for idx, msg in enumerate(messages):
+            if isinstance(msg, dict) and msg.get("version") != "v0.9":
+                kind = next((k for k in msg if k != "version"), "message")
+                errors.append(
+                    f'{filename}: messages[{idx}] ({kind}) MISSING "version": "v0.9" '
+                    f"- add it as a top-level key next to \"{kind}\"."
+                )
+            
         # Icon names must come from the catalog enum. LLMs habitually emit
         # Material Design snake_case ("calendar_month") instead of the
         # catalog's camelCase ("calendarToday"), which hard-fails the React
@@ -730,7 +742,7 @@ CORRECT:
 17. **WELCOME VIEW FILE EMITTED:** Is there a `<file name="src/examples/v0_9/welcome_view.json">`block? Does its structure match the golden `welcome_view.json` example (root Column -> welcome_card -> welcome_content; title; subtitle; Divider; 3-5 capability Rows each with an Icon + Text; Divider; "Try saying:" label; exactly ONE starter Row)? (FAIL if the file is missing or the structure deviates).
 18. **WELCOME VIEW CONTENT + WIRING:** Are the 3-5 capabilities real, tool-derived actions (not filler), and is there EXACTLY ONE concrete domain-specific starter prompt (not "Get started"/"Help")? Does `UI_DESCRIPTION` make this STEP 1, rendering ONLY this card on the first turn with NO tool call, then waiting for the user? (FAIL if any are missing).
 19. **ICON NAMES:** Are ALL `Icon` `name` values camelCase entries from the catalog list in Rule 20? (FAIL on any snake_case such as `check_circle` or `play_arrow`).
-
+20. **MESSAGE VERSION:** Does EVERY top-level message object in EVERY `examples/v0_9/*.json` file contain `"version": "v0.9"`? (FAIL if any `createSurface` / `updateComponents` / `updateDataModel` message is missing it).
 """ + WELCOME_VIEW_SPEC + """
 
 If the code is PERFECT, reply with EXACTLY '<PASS>'.
