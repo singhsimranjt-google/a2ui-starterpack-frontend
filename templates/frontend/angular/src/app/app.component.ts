@@ -178,19 +178,20 @@ export class AppComponent implements OnInit {
   @HostListener('window:a2ui-action', ['$event'])
   async onA2uiAction(event: any) {
     const action = event.detail;
+    const promptText = String(action?.context?.prompt || '').trim() || `Submitted "${action?.name || 'action'}"`;
     this.agentStatus.set('executing');
 
     // Simulate user sending an "action" message
     this.messages.update((prev) => [
       ...prev,
-      { sender: 'user', text: `Processing the user request...`, timestamp: new Date().toLocaleTimeString() }
+      { sender: 'user', text: promptText, timestamp: new Date().toLocaleTimeString() }
     ]);
 
     try {
       const response = await fetch(this.apiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: "Action Payload attached", action, session_id: this.sessionId })
+        body: JSON.stringify({ prompt: promptText, action, session_id: this.sessionId })
       });
       const data = await response.json();
       const surfaceId = this.processA2uiPayload(data.a2ui);

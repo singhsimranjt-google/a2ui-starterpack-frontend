@@ -1,6 +1,8 @@
 import {
   Component,
   computed,
+  effect,
+  signal,
   ChangeDetectionStrategy,
   Injectable,
   inject
@@ -20,13 +22,17 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 
+import { GoogleMapsModule } from '@angular/google-maps';
+import { z } from 'zod';
+
 import {
   BasicCatalogBase,
   CatalogComponent,
   ComponentHostComponent,
   A2uiRendererService
 } from '@a2ui/angular/v0_9';
-import { CardApi, ButtonApi, DividerApi, DataContext, TextFieldApi, CheckBoxApi, RowApi, IconApi, DateTimeInputApi, ImageApi, ChoicePickerApi } from '@a2ui/web_core/v0_9';
+import { CardApi, ButtonApi, DividerApi, DataContext, TextFieldApi, CheckBoxApi, RowApi, IconApi, DateTimeInputApi, ImageApi, ChoicePickerApi, childList } from '@a2ui/web_core/v0_9';
+import { ChartApi, MaterialChartComponent, VegaChartApi, MaterialVegaChartComponent } from './vega-components';
 
 /**
  * Bespoke Angular Material Card wrapper for A2UI Basic Catalog
@@ -261,7 +267,6 @@ export class MaterialCheckboxComponent extends CatalogComponent<typeof CheckBoxA
     }
   }
 }
-
 /**
  * Bespoke Angular wrapper for A2UI Row Component
  */
@@ -270,7 +275,7 @@ export class MaterialCheckboxComponent extends CatalogComponent<typeof CheckBoxA
   standalone: true,
   imports: [ComponentHostComponent],
   template: `
-    <div style="display: flex; flex-direction: row; align-items: center; gap: 24px;">
+    <div class="row" [style.justify-content]="justify()" [style.align-items]="align()">
       @for (child of children(); track $index) {
         <!-- The critical fix: wrapping the host in a native div -->
         <div style="display: block;">
@@ -280,11 +285,20 @@ export class MaterialCheckboxComponent extends CatalogComponent<typeof CheckBoxA
       }
     </div>
   `,
+  styles: [`.row { display: flex; flex-direction: row; flex-wrap: wrap; gap: 12px 24px; }`],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MaterialRowComponent extends CatalogComponent<typeof RowApi> {
+  private static readonly J: Record<string, string> = {
+    start: 'flex-start', center: 'center', end: 'flex-end', stretch: 'stretch',
+    spaceBetween: 'space-between', spaceAround: 'space-around', spaceEvenly: 'space-evenly',
+  };
+  private static readonly A: Record<string, string> = { start: 'flex-start', center: 'center', end: 'flex-end', stretch: 'stretch' };
   children = computed(() => this.props()['children']?.value() || []);
+  justify = computed(() => MaterialRowComponent.J[String(this.props()['justify']?.value() ?? 'start')] ?? 'flex-start');
+  align = computed(() => MaterialRowComponent.A[String(this.props()['align']?.value() ?? 'center')] ?? 'center');
 }
+
 
 /**
  * Official Angular Material Datepicker wrapped for A2UI
@@ -422,18 +436,142 @@ export class MaterialIconComponent extends CatalogComponent<typeof IconApi> {
 }
 
 
+declare const google: any;
+
+type LatLng = { lat: number; lng: number };
+
+/** Loads the Maps JavaScript API once per page. */
+let mapsScriptPromise: Promise<void> | null = null;
+function loadGoogleMaps(key: string): Promise<void> {
+  if ((window as any).google?.maps?.marker) return Promise.resolve();
+  if (!mapsScriptPromise) {
+    mapsScriptPromise = new Promise<void>((resolve, reject) => {
+      (window as any).__a2uiMapsReady = () => resolve();
+      const s = document.createElement('script');
+      s.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(key)}` +
+        '&libraries=marker&loading=async&callback=__a2uiMapsReady';
+      s.async = true;
+      s.onerror = () => {
+        mapsScriptPromise = null;
+        reject(new Error('Google Maps JS failed to load'));
+      };
+      document.head.appendChild(s);
+    });
+  }
+  return mapsScriptPromise;
+}
+
+
 /**
- * Bespoke Angular wrapper for A2UI Image Component
+ * If `url` is a Google Static Maps URL, return its key + marker coordinates.
+ * "markers=color:red|37.77,-122.41|34.05,-118.24" -> [{lat,lng},{lat,lng}]
+ */
+function parseStaticMapUrl(url: string): { key: string; markers: LatLng[] } | null {
+  try {
+    const u = new URL(url);
+    if (u.hostname !== 'maps.googleapis.com' || !u.pathname.includes('/maps/api/staticmap')) {
+      return null;
+    }
+    const markers: LatLng[] = [];
+    for (const group of u.searchParams.getAll('markers')) {
+      for (const part of group.split('|')) {
+        const [lat, lng] = part.split(',').map(Number);
+        if (part.includes(',') && Number.isFinite(lat) && Number.isFinite(lng)) {
+          markers.push({ lat, lng });
+        }
+      }
+    }
+    return { key: u.searchParams.get('key') ?? '', markers };
+  } catch {
+    return null;
+  }
+}
+
+
+/**
+ * Bespoke Angular wrapper for A2UI Image Component.
+ * Progressive enhancement: a Google Static Maps URL is upgraded to a live, interactive map.
  */
 @Component({
   selector: 'a2ui-mat-image',
   standalone: true,
-  template: `<img [src]="url()" style="width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-bottom: 12px;" />`,
+  imports: [GoogleMapsModule],
+  template: `
+    @if (mapInfo(); as info) {
+      @if (mapsReady()) {
+        <google-map
+          height="320px"
+          width="100%"
+          [options]="mapOptions()"
+          (mapInitialized)="fitToMarkers($event)">
+          @for (m of info.markers; track $index) {
+            <map-advanced-marker [position]="m" (mapClick)="selected.set(m)" />
+          }
+        </google-map>
+        @if (selected(); as s) {
+          <div style="font-size: 12px; margin: 6px 0 12px;">📍 {{ s.lat }}, {{ s.lng }}</div>
+        }
+      } @else if (mapsError()) {
+        <img [src]="url()" style="width: 100%; border-radius: 8px; margin-bottom: 12px;" />
+      } @else {
+        <div style="height: 320px; display: grid; place-items: center;">Loading map…</div>
+      }
+        } @else {
+      <img [src]="url()" [attr.alt]="alt()" [class]="'img ' + variant()" [style.object-fit]="fit()" />
+    }
+  `,
+  styles: [`
+    :host { display: block; }
+    .img { display: block; width: 100%; max-height: 200px; border-radius: 8px; margin-bottom: 12px; }
+    .img.icon { width: 24px; height: 24px; margin: 0; border-radius: 4px; }
+    .img.avatar { width: 56px; height: 56px; margin: 0; border-radius: 50%; }
+    .img.smallFeature { max-height: 140px; }
+    .img.largeFeature { max-height: 360px; }
+    .img.header { max-height: 180px; }
+  `],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class MaterialImageComponent extends CatalogComponent<any> {
   url = computed(() => this.props()['url']?.value() || '');
+  variant = computed(() => String(this.props()['variant']?.value() ?? 'mediumFeature'));
+  fit = computed(() => {
+    const f = String(this.props()['fit']?.value() ?? 'cover');
+    return f === 'scaleDown' ? 'scale-down' : f;
+  });
+  alt = computed(() => String(this.props()['description']?.value() ?? ''));
+
+  mapInfo = computed(() => parseStaticMapUrl(this.url()));
+
+  mapsReady = signal(false);
+  mapsError = signal(false);
+  selected = signal<LatLng | null>(null);
+
+  mapOptions = computed(() => ({
+    mapId: 'DEMO_MAP_ID',
+    center: this.mapInfo()?.markers[0] ?? { lat: 20, lng: 0 },
+    zoom: 5,
+    mapTypeControl: false,
+    streetViewControl: false,
+  }));
+
+  // Field-initialised effect: loads the Maps JS API as soon as a map URL arrives.
+  private readonly loadMaps = effect(() => {
+    const info = this.mapInfo();
+    if (!info?.key) return;
+    loadGoogleMaps(info.key)
+      .then(() => this.mapsReady.set(true))
+      .catch(() => this.mapsError.set(true));
+  });
+
+  fitToMarkers(map: any) {
+    const markers = this.mapInfo()?.markers ?? [];
+    if (markers.length < 2) return;
+    const bounds = new google.maps.LatLngBounds();
+    markers.forEach((m) => bounds.extend(m));
+    map.fitBounds(bounds);
+  }
 }
+
 
 
 /**
@@ -494,6 +632,218 @@ export class MaterialChoicePickerComponent extends CatalogComponent<typeof Choic
 }
 
 
+// ---------------------------------------------------------------------------
+// Extended components: Table + Chart
+// These mirror backend/manager_dashboard/catalogs/extended_catalog.json.
+// Without them the renderer silently skips "Table"/"Chart" nodes.
+// ---------------------------------------------------------------------------
+
+const DynamicValue = z.union([
+  z.string(), z.number(), z.boolean(), z.array(z.any()),
+  z.object({ path: z.string() }).passthrough(),
+  z.object({ call: z.string() }).passthrough(),
+]);
+const DynamicStr = z.union([z.string(), z.object({ path: z.string() }).passthrough()]);
+const ExtCommon = {
+  accessibility: z.any().optional(),
+  weight: z.number().optional(),
+};
+
+export const TableApi = {
+  name: 'Table',
+  schema: z.object({
+    ...ExtCommon,
+    title: DynamicStr.optional(),
+    columns: z.array(z.object({
+      key: z.string(),
+      label: z.string(),
+      type: z.enum(['text', 'number']).optional(),
+      editable: z.boolean().optional(),
+    })),
+    rows: DynamicValue,
+    pageSize: z.number().optional(),
+  }),
+};
+
+type TableColumn = { key: string; label: string; type?: 'text' | 'number'; editable?: boolean };
+
+/** Unwraps a bound prop and guarantees an array of row objects. */
+function asRows(raw: any): Record<string, any>[] {
+  if (Array.isArray(raw)) return raw.filter((r) => r && typeof r === 'object');
+  if (raw && typeof raw === 'object' && Array.isArray(raw.rows)) return raw.rows;
+  return [];
+}
+
+@Component({
+  selector: 'a2ui-mat-table',
+  standalone: true,
+  template: `
+    @if (title()) { <div class="t-title">{{ title() }}</div> }
+    <div class="t-wrap">
+      <table>
+        <thead>
+          <tr>
+            @for (c of columns(); track c.key) {
+              <th [class.num]="c.type === 'number'">
+                {{ c.label }}
+                @if (c.editable) { <span class="edit-mark" title="Editable">&#9998;</span> }
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of pageRows(); track $index; let ri = $index) {
+            <tr>
+              @for (c of columns(); track c.key) {
+                <td [class.num]="c.type === 'number'" [class.editable]="c.editable">
+                  @if (c.editable) {
+                    <input
+                      class="cell-input"
+                      [class.num]="c.type === 'number'"
+                      [type]="c.type === 'number' ? 'number' : 'text'"
+                      [value]="r[c.key] ?? ''"
+                      [attr.aria-label]="c.label"
+                      (change)="editCell(pageStart() + ri, c, $any($event.target).value)" />
+                  } @else {
+                    {{ r[c.key] ?? '' }}
+                  }
+                </td>
+              }
+            </tr>
+          } @empty {
+            <tr><td [attr.colspan]="columns().length || 1" class="empty">No data</td></tr>
+          }
+        </tbody>
+      </table>
+    </div>
+    @if (pageCount() > 1) {
+      <div class="t-pager">
+        <button (click)="page.set(page() - 1)" [disabled]="page() === 0">&lsaquo;</button>
+        <span>{{ page() + 1 }} / {{ pageCount() }}</span>
+        <button (click)="page.set(page() + 1)" [disabled]="page() >= pageCount() - 1">&rsaquo;</button>
+      </div>
+    }
+  `,
+  styles: [`
+    :host { display: block; width: 100%; margin-bottom: 16px; }
+    .t-title { font-weight: 500; margin-bottom: 8px; }
+    .t-wrap { overflow-x: auto; border: 1px solid #e0e3e7; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eef0f2; }
+    th { background: #f8f9fa; font-weight: 500; }
+    .num { text-align: right; }
+    .empty { text-align: center; color: #80868b; }
+    .edit-mark { color: #1a73e8; font-size: 11px; margin-left: 4px; }
+    td.editable { padding: 4px 8px; background: #f8fbff; }
+    .cell-input {
+      display: block; width: 100%; min-width: 64px; box-sizing: border-box;
+      font: inherit; font-size: 13px; line-height: 20px; padding: 4px 8px;
+      color: #202124; -webkit-text-fill-color: #202124; caret-color: #1a73e8;
+      color-scheme: light;             /* stop the OS dark theme from making the text white */
+      background: #ffffff; border: 1px solid #dadce0; border-radius: 4px;
+    }
+    .cell-input.num { text-align: right; }
+    .cell-input::placeholder { color: #9aa0a6; -webkit-text-fill-color: #9aa0a6; }
+    .cell-input:hover { border-color: #9aa0a6; }
+    .cell-input:focus { outline: none; border-color: #1a73e8; box-shadow: 0 0 0 1px #1a73e8; }
+
+    .t-pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 6px; font-size: 12px; }
+    .t-pager button { border: 1px solid #dadce0; background: #fff; border-radius: 4px; cursor: pointer; padding: 2px 8px; }
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class MaterialTableComponent extends CatalogComponent<any> {
+  title = computed(() => this.props()['title']?.value() || '');
+  columns = computed<TableColumn[]>(() => {
+    const raw = this.props()['columns']?.value();
+    return Array.isArray(raw) ? raw : [];
+  });
+  rows = computed(() => asRows(this.props()['rows']?.value()));
+  pageSize = computed(() => Number(this.props()['pageSize']?.value()) || 5);
+  page = signal(0);
+  pageCount = computed(() => Math.max(1, Math.ceil(this.rows().length / this.pageSize())));
+  pageStart = computed(() => Math.min(this.page(), this.pageCount() - 1) * this.pageSize());
+  pageRows = computed(() => this.rows().slice(this.pageStart(), this.pageStart() + this.pageSize()));
+
+  /**
+   * Writes one edited cell back to the data model at the bound `rows` path, so a
+   * Button whose action context references the same path sends the edited rows.
+   */
+  editCell(rowIndex: number, column: TableColumn, text: string): void {
+    const rowsProp = this.props()['rows'];
+    const current = rowsProp?.value();
+    const next = this.rows().map((row) => ({ ...row }));
+    if (!next[rowIndex]) return;
+
+    if (column.type === 'number') {
+      const num = Number(text);
+      next[rowIndex][column.key] = text.trim() === '' || Number.isNaN(num) ? null : num;
+    } else {
+      next[rowIndex][column.key] = text;
+    }
+
+    // Keep the shape the agent bound: either the array itself or {rows: [...]}.
+    const isWrapped = current && !Array.isArray(current) && Array.isArray(current.rows);
+    rowsProp?.onUpdate(isWrapped ? { ...current, rows: next } : next);
+  }
+}
+
+
+/**
+ * Grid: a responsive collection layout. The agent only says "these are items"
+ * (plus an optional column count the user asked for); every pixel decision
+ * (gap, min card width, collapsing on narrow screens) lives here.
+ */
+export const GridApi = {
+  name: 'Grid',
+  schema: z.object({
+    ...ExtCommon,
+    children: childList(),
+    columns: z.number().int().min(1).max(4).optional(),
+  }),
+};
+
+@Component({
+  selector: 'a2ui-mat-grid',
+  standalone: true,
+  imports: [ComponentHostComponent],
+  template: `
+    <div class="grid" [class.fixed]="!!columns()" [style.--cols]="columns()">
+      @for (child of children(); track $index) {
+        <div class="cell">
+          <a2ui-v09-component-host [componentKey]="child" [surfaceId]="surfaceId()" />
+        </div>
+      }
+    </div>
+  `,
+  styles: [`
+    :host { display: block; width: 100%; margin-bottom: 12px; }
+    .grid {
+      --gap: var(--a2ui-grid-gap, 12px);
+      --min: var(--a2ui-grid-min, 180px);
+      display: grid;
+      gap: var(--gap);
+      grid-template-columns: repeat(auto-fill, minmax(var(--min), 1fr));
+    }
+    /* At most --cols columns; drops to fewer on its own when a column would be narrower than --min. */
+    .grid.fixed {
+      grid-template-columns: repeat(auto-fill,
+        minmax(max(var(--min), calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols))), 1fr));
+    }
+    .cell { min-width: 0; display: flex; }
+    .cell > * { flex: 1; min-width: 0; }
+  `],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+})
+export class MaterialGridComponent extends CatalogComponent<typeof GridApi> {
+  children = computed(() => this.props()['children']?.value() || []);
+  columns = computed(() => {
+    const n = Number(this.props()['columns']?.value());
+    return n >= 1 && n <= 4 ? Math.floor(n) : null;
+  });
+}
+
+
 /**
  * Bespoke Angular Material Extended Catalog for A2UI v0.9
  */
@@ -513,9 +863,13 @@ export class MaterialBasicCatalog extends BasicCatalogBase {
         choicePicker: { ...ChoicePickerApi, component: MaterialChoicePickerComponent },
         row: { ...RowApi, component: MaterialRowComponent },
         icon: { ...IconApi, component: MaterialIconComponent },
+        image: { ...ImageApi, component: MaterialImageComponent },
       },
       extraComponents: [
-        { ...ImageApi, component: MaterialImageComponent }
+        { ...TableApi, component: MaterialTableComponent },
+        { ...ChartApi, component: MaterialChartComponent },
+        { ...VegaChartApi, component: MaterialVegaChartComponent },
+        { ...GridApi, component: MaterialGridComponent },
       ]
     });
   }
