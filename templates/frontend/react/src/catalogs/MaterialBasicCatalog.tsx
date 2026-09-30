@@ -13,8 +13,9 @@ import {
   Checkbox,
   FormControlLabel,
 } from '@mui/material';
-import { basicCatalog, createComponentImplementation } from '@a2ui/react/v0_9';
+import { basicCatalog, createComponentImplementation, ReactComponentImplementation } from '@a2ui/react/v0_9';
 import {
+  Catalog,
   CardApi,
   RowApi,
   ButtonApi,
@@ -30,6 +31,12 @@ import {
 import { LocalizationProvider, DatePicker, TimePicker } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
+
+import { MaterialChart, MaterialVegaChart } from './vega-components';
+import { MaterialTable } from './table-component';
+import { GoogleMapView, parseStaticMapUrl } from './google-map';
+import { MaterialGrid } from './grid-component';
+import { MaterialText } from './text-component';
 
 /**
  * 1. Card  —  mirrors MaterialCardComponent (<mat-card appearance="outlined">)
@@ -179,17 +186,35 @@ const MaterialCheckbox = createComponentImplementation(CheckBoxApi, ({ props }) 
  * (the latter when the row sits inside a repeated/List data context). Handle both,
  * otherwise nested rows silently render empty.
  */
-const MaterialRow = createComponentImplementation(RowApi, ({ props, buildChild }) => (
-  <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', gap: 24 }}>
-    {(props.children || []).map((child, i) => (
-      <div key={i} style={{ display: 'block' }}>
-        {typeof child === 'string'
-          ? buildChild(child)
-          : buildChild(child.id, child.basePath)}
-      </div>
-    ))}
-  </div>
-));
+const JUSTIFY: Record<string, string> = {
+  start: 'flex-start', center: 'center', end: 'flex-end', stretch: 'stretch',
+  spaceBetween: 'space-between', spaceAround: 'space-around', spaceEvenly: 'space-evenly',
+};
+const ALIGN: Record<string, string> = { start: 'flex-start', center: 'center', end: 'flex-end', stretch: 'stretch' };
+
+const MaterialRow = createComponentImplementation(RowApi, ({ props, buildChild }) => {
+  const p = props as any;
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'row',
+        flexWrap: 'wrap', // never overflow the card
+        rowGap: 8,
+        columnGap: 12,
+        justifyContent: JUSTIFY[String(p.justify ?? 'start')] ?? 'flex-start',
+        alignItems: ALIGN[String(p.align ?? 'center')] ?? 'center',
+      }}
+    >
+      {(props.children || []).map((child, i) => (
+        <div key={i} style={{ display: 'block' }}>
+          {typeof child === 'string' ? buildChild(child) : buildChild(child.id, child.basePath)}
+        </div>
+      ))}
+    </div>
+  );
+});
+
 
 /**
  * 7. DateTimeInput  —  mirrors MaterialDateTimeInputComponent
@@ -301,19 +326,39 @@ const MaterialIcon = createComponentImplementation(IconApi, ({ props }) => {
 
 /**
  * 9. Image  —  mirrors MaterialImageComponent
+ * Size comes ONLY from the semantic `variant`; the agent never sends width/height.
  */
-const MaterialImage = createComponentImplementation(ImageApi, ({ props }) => (
-  <img
-    src={props.url || ''}
-    style={{
-      width: '100%',
-      maxHeight: 200,
-      objectFit: 'cover',
-      borderRadius: 8,
-      marginBottom: 12,
-    }}
-  />
-));
+const IMG_BASE: React.CSSProperties = {
+  display: 'block', width: '100%', maxHeight: 200, borderRadius: 8, marginBottom: 12,
+};
+const IMG_VARIANT: Record<string, React.CSSProperties> = {
+  icon: { width: 24, height: 24, margin: 0, borderRadius: 4 },
+  avatar: { width: 56, height: 56, margin: 0, borderRadius: '50%' },
+  smallFeature: { maxHeight: 140 },
+  mediumFeature: {},
+  largeFeature: { maxHeight: 360 },
+  header: { maxHeight: 180 },
+};
+
+const MaterialImage = createComponentImplementation(ImageApi, ({ props }) => {
+  const p = props as any;
+  const url = String(p.url || '');
+  // A Google Static Maps URL (from viz.save_google_map) becomes a live Google Map.
+  const mapInfo = parseStaticMapUrl(url);
+  if (mapInfo?.key) return <GoogleMapView info={mapInfo} fallbackUrl={url} />;
+
+  const variant = String(p.variant ?? 'mediumFeature');
+  const fitRaw = String(p.fit ?? 'cover');
+  const fit = (fitRaw === 'scaleDown' ? 'scale-down' : fitRaw) as React.CSSProperties['objectFit'];
+  return (
+    <img
+      src={url}
+      alt={String(p.description ?? '')}
+      style={{ ...IMG_BASE, ...(IMG_VARIANT[variant] ?? {}), objectFit: fit }}
+    />
+  );
+});
+
 
 /**
  * 10. ChoicePicker  —  mirrors MaterialChoicePickerComponent (<mat-select> real dropdown)
@@ -365,20 +410,34 @@ const MaterialChoicePicker = createComponentImplementation(ChoicePickerApi, ({ p
 /**
  * Bespoke React Material Extended Catalog for A2UI v0.9
  * (1:1 with Angular's MaterialBasicCatalog)
+ *
+ * Built as a real Catalog (not an object spread) so the id, the basic functions
+ * (formatString, formatCurrency, length, ...) and the function invoker all stay
+ * wired up. Table / Chart / VegaChart mirror backend extended_catalog.json;
+ * without them the renderer silently skips those nodes.
  */
-export const materialCatalog = {
-  ...basicCatalog,
-  components: new Map([
-    ...basicCatalog.components,
-    [CardApi.name, MaterialCard],
-    [ButtonApi.name, MaterialButton],
-    [DividerApi.name, MaterialDivider],
-    [DateTimeInputApi.name, MaterialDateTimeInput],
-    [TextFieldApi.name, MaterialTextField],
-    [CheckBoxApi.name, MaterialCheckbox],
-    [ChoicePickerApi.name, MaterialChoicePicker],
-    [RowApi.name, MaterialRow],
-    [IconApi.name, MaterialIcon],
-    [ImageApi.name, MaterialImage],
-  ]),
-};
+const overrides: ReactComponentImplementation[] = [
+  MaterialCard,
+  MaterialButton,
+  MaterialDivider,
+  MaterialDateTimeInput,
+  MaterialTextField,
+  MaterialCheckbox,
+  MaterialChoicePicker,
+  MaterialRow,
+  MaterialIcon,
+  MaterialImage,
+  MaterialTable,
+  MaterialChart,
+  MaterialVegaChart,
+  MaterialGrid,
+  MaterialText,
+];
+const components = new Map<string, ReactComponentImplementation>(basicCatalog.components);
+for (const impl of overrides) components.set(impl.name, impl);
+export const materialCatalog = new Catalog<ReactComponentImplementation>(
+  basicCatalog.id,
+  [...components.values()],
+  [...basicCatalog.functions.values()],
+  basicCatalog.themeSchema,
+);

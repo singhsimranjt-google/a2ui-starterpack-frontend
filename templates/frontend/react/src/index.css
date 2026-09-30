@@ -26,6 +26,8 @@
   --a2ui-color-border: #e8eaed;
   --a2ui-color-primary: #1a73e8;
   --a2ui-color-on-background: #202124;
+  --a2ui-color-on-surface: #202124;
+  --a2ui-text-caption-color: #5f6368;
   --a2ui-text-color-text: #202124;
 
   /* Elevated Card Variables */
@@ -127,6 +129,16 @@ a2ui-v09-row {
   font-size: 13.5px;
   color: var(--google-grey-700);
   font-weight: 500;
+}
+
+.a2ui-text.body {
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--google-grey-900);
+}
+
+.a2ui-text.body p {
+  margin: 0;
 }
 
 /* Markdown Typography */

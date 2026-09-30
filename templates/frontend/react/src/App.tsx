@@ -59,11 +59,14 @@ export function App() {
   useEffect(() => {
     const onA2uiAction = async (event: Event) => {
       const action = (event as CustomEvent).detail;
+      // context.prompt is a literal or an already-evaluated formatString result.
+      const rawPrompt = action?.context?.prompt;
+      const promptText = (typeof rawPrompt === 'string' ? rawPrompt.trim() : '') || `Submitted "${action?.name || 'action'}"`;
       setAgentStatus('executing');
 
       setMessages(prev => [...prev, {
         sender: 'user',
-        text: 'Processing the user request...',
+        text: promptText,
         timestamp: new Date().toLocaleTimeString(),
       }]);
 
@@ -72,7 +75,7 @@ export function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            prompt: 'Action Payload attached',
+            prompt: promptText,
             action,
             session_id: SESSION_ID,
           }),
@@ -220,6 +223,8 @@ export function App() {
     }
   };
 
+  const surfaceOf = (id?: string) => (id ? processor.model.getSurface(id) : undefined);
+
   const createMarkup = (text: string) => {
     return { __html: DOMPurify.sanitize(marked.parse(text, { async: false }) as string) };
   };
@@ -265,12 +270,11 @@ export function App() {
 
                   <div className="message-content">
                     {/* Render A2UI Component Surface if present and successfully processed */}
-                    {msg.surfaceId && (
+                    {surfaceOf(msg.surfaceId) && (
                       <div className="a2ui-surface-wrapper">
-                        <A2uiSurface surface={processor.model.getSurface(msg.surfaceId)!} />
+                        <A2uiSurface surface={surfaceOf(msg.surfaceId)!} />
                       </div>
                     )}
-
                     {/* Fallback: Display markdown-rendered text only when A2UI surface is not present */}
                     {!msg.surfaceId && msg.text && (
                       <div
