@@ -7,6 +7,7 @@ from google.genai import types, Client
 from pydantic import BaseModel
 
 from . import a2ui_utils
+from . import plot_store
 from .agent import root_agent
 from .config import config
 
@@ -97,7 +98,7 @@ class PromptRequest(BaseModel):
 active_sessions = {}
 
 @app.post("/api/agent/chat", response_model=PromptResponse)
-async def execute_agent_chat(request: PromptRequest):
+def execute_agent_chat(request: PromptRequest):
     if not request.prompt.strip():
         raise HTTPException(status_code=400, detail="Prompt cannot be empty")
 
@@ -144,9 +145,14 @@ async def execute_agent_chat(request: PromptRequest):
 
         clean_text, a2ui_data = a2ui_utils.parse_a2ui_response(raw_text, tool_result)
 
+        # Plots - VegaChart components bind to "/plots/<id>". Attach the spec the
+        # tool stored server-side, so thousands of samples never pass through the LLM.
+        a2ui_data = plot_store.attach_plot_data(a2ui_data, tool_result)
+
         # L3 - never ship a payload the renderer will reject. Degrading to text
         # is strictly better than showing the user a red error card.
         if a2ui_data and not a2ui_utils.is_renderable(a2ui_data):
+            print("[A2UI] Payload failed validation and was dropped:", a2ui_data)
             a2ui_data = None
             if not clean_text:
                 clean_text = "Sorry, I couldn't render that view. Please try again."

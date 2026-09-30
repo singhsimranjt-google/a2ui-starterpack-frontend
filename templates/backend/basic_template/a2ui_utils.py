@@ -11,6 +11,7 @@ Pipeline:  extract -> resolve placeholders -> normalize -> frontend
 
 import json
 import logging
+import os
 import re
 import uuid
 from typing import Any, Dict, List, Optional, Tuple
@@ -35,6 +36,21 @@ _TAG_PATTERN = re.compile(
     r"<a2ui-json>(.*?)</a2ui-json>",
     re.DOTALL,
 )
+
+_TRAILING_COMMA = re.compile(r",\s*([}\]])")
+
+
+def _loads_lenient(text: str) -> Any:
+    """json.loads, retried once after removing trailing commas (a common LLM slip)."""
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        repaired = _TRAILING_COMMA.sub(r"\1", text)
+        if repaired == text:
+            raise
+        logger.warning("Repaired trailing commas in A2UI JSON")
+        return json.loads(repaired)
+
 
 # A2UI v0.9 has NO string interpolation: DynamicString is a literal string, a
 # {"path": ...} DataBinding, or a FunctionCall. Any "${...}" the model emits is
@@ -105,6 +121,10 @@ def resolve_placeholders(payload: Any, tool_result: Any) -> Any:
     the user.
     """
     if isinstance(payload, dict):
+        # FunctionCalls (e.g. formatString) carry client-side ${...} expressions
+        # that the renderer evaluates against the data model. Leave them intact.
+        if "call" in payload:
+            return payload
         return {k: resolve_placeholders(v, tool_result) for k, v in payload.items()}
     if isinstance(payload, list):
         return [resolve_placeholders(v, tool_result) for v in payload]
@@ -124,6 +144,86 @@ def _message_key(message: Dict[str, Any]) -> Optional[str]:
         if key in message:
             return key
     return None
+
+
+EXTENDED_CATALOG_PATH = os.path.join(
+    os.path.dirname(__file__), "catalogs", "extended_catalog.json"
+)
+
+
+def get_catalog_config(examples_path: Optional[str] = None) -> Any:
+    """Basic catalog + Table + Chart. Used by the agent prompt AND the runtime validator."""
+    from a2ui.schema.catalog import CatalogConfig
+
+    return CatalogConfig.from_path(
+        "extended_basic", EXTENDED_CATALOG_PATH, examples_path=examples_path
+    )
+
+
+def _refs(c: Dict[str, Any]) -> List[str]:
+    """Every component id that component `c` points at (children, child, Modal, Tabs)."""
+    out: List[str] = []
+    children = c.get("children")
+    if isinstance(children, list):
+        out += [r for r in children if isinstance(r, str)]
+    elif isinstance(children, dict) and isinstance(children.get("componentId"), str):
+        out.append(children["componentId"])
+    for key in ("child", "trigger", "content"):
+        if isinstance(c.get(key), str):
+            out.append(c[key])
+    for tab in c.get("tabs") or []:
+        if isinstance(tab, dict) and isinstance(tab.get("child"), str):
+            out.append(tab["child"])
+    return out
+
+
+def _repair_modals(components: List[Any]) -> None:
+    """Puts every Modal exactly where its trigger would otherwise be.
+
+    A Modal draws its own trigger, so a parent must list the Modal, never the
+    trigger. The model makes two mistakes here:
+      a) the parent lists the trigger and the Modal floats unreferenced
+         -> the payload is dropped ("not reachable from 'root'").
+      b) the parent lists BOTH the trigger and the Modal
+         -> the trigger is drawn twice ("View details" appears two times).
+    """
+    comps = [c for c in components if isinstance(c, dict)]
+    for modal in comps:
+        mid, trigger = modal.get("id"), modal.get("trigger")
+        if modal.get("component") != "Modal" or not mid or not isinstance(trigger, str):
+            continue
+        placed = any(mid in _refs(p) for p in comps if p is not modal)
+        for parent in comps:
+            if parent is modal:
+                continue
+            children = parent.get("children")
+            if isinstance(children, list) and trigger in children:
+                if placed:  # (b) the Modal already draws it - drop the duplicate
+                    parent["children"] = [r for r in children if r != trigger]
+                    logger.warning("Removed duplicate Modal trigger %s from %s", trigger, parent.get("id"))
+                else:  # (a) the Modal takes the trigger's slot
+                    parent["children"] = [mid if r == trigger else r for r in children]
+                    placed = True
+                    logger.warning("Repaired orphan Modal %s (placed where trigger %s was)", mid, trigger)
+            elif parent.get("child") == trigger and not placed:
+                parent["child"] = mid
+                placed = True
+                logger.warning("Repaired orphan Modal %s (placed where trigger %s was)", mid, trigger)
+
+
+def _repair_missing_ids(components: List[Any]) -> None:
+    """Restores a dropped component id when it is unambiguous.
+
+    If exactly one component lacks an "id" and exactly one child reference
+    points at an undefined id, that id belongs to the orphan component.
+    """
+    ids = {c.get("id") for c in components if isinstance(c, dict)}
+    referenced = [r for c in components if isinstance(c, dict) for r in _refs(c)]
+    dangling = [r for r in dict.fromkeys(referenced) if r not in ids]
+    missing = [c for c in components if isinstance(c, dict) and not c.get("id")]
+    if len(dangling) == 1 and len(missing) == 1:
+        logger.warning("Repaired missing component id -> %s", dangling[0])
+        missing[0]["id"] = dangling[0]
 
 
 def normalize_a2ui_messages(
@@ -183,6 +283,10 @@ def normalize_a2ui_messages(
         payload = dict(message[key])
         payload["surfaceId"] = surface_id
 
+        if key == "updateComponents" and isinstance(payload.get("components"), list):
+            _repair_missing_ids(payload["components"])
+            _repair_modals(payload["components"])
+
         if key == "deleteSurface" and not has_create:
             logger.warning("Dropping deleteSurface for uncreated surface %s", surface_id)
             continue
@@ -225,13 +329,12 @@ def _get_validator() -> Any:
         return _validator
     _validator_ready = True
     try:
-        from a2ui.basic_catalog.provider import BasicCatalog
         from a2ui.inference_formats.direct_json import DirectJsonFormat
         from a2ui.schema import constants
 
         fmt = DirectJsonFormat(
             constants.VERSION_0_9,
-            [BasicCatalog.get_config(constants.VERSION_0_9)],
+            [get_catalog_config()],
         )
         _validator = fmt._select_catalog(None).validator
     except Exception as err:  # pragma: no cover - environment dependent
@@ -291,7 +394,8 @@ def parse_a2ui_response(
         if not block_str:
             continue
         try:
-            parsed = json.loads(block_str)
+            # parsed = json.loads(block_str)
+            parsed = _loads_lenient(block_str)
             extracted = extract_v09_messages(parsed)
             extracted = resolve_placeholders(extracted, tool_result)  # L2
             a2ui_messages.extend(normalize_a2ui_messages(extracted, uuid_suffix))  # L1
@@ -300,7 +404,8 @@ def parse_a2ui_response(
                 "Failed to parse A2UI JSON in block %d: %s | payload=%s",
                 index,
                 err,
-                block_str[:2000],
+                # block_str[:2000],
+                block_str,
             )
 
     return clean_text, a2ui_messages if a2ui_messages else None
