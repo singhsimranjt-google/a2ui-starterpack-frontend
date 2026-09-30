@@ -1,0 +1,101 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "revenue_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "revenue_surface",
+      "path": "/revenue",
+      "value": {
+        "rows": []
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "revenue_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "revenue_card"
+          ]
+        },
+        {
+          "component": "Card",
+          "id": "revenue_card",
+          "child": "revenue_col"
+        },
+        {
+          "component": "Column",
+          "id": "revenue_col",
+          "children": [
+            "revenue_title",
+            "revenue_chart",
+            "revenue_table",
+            "back_btn"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "revenue_title",
+          "text": "Portfolio Revenue by City",
+          "variant": "h4"
+        },
+        {
+          "component": "Chart",
+          "id": "revenue_chart",
+          "chartType": "bar",
+          "data": {
+            "path": "/revenue/rows"
+          },
+          "x": "city",
+          "y": "revenue"
+        },
+        {
+          "component": "Table",
+          "id": "revenue_table",
+          "columns": [
+            {
+              "key": "city",
+              "label": "City"
+            },
+            {
+              "key": "revenue",
+              "label": "Estimated Monthly Revenue",
+              "type": "number"
+            }
+          ],
+          "rows": {
+            "path": "/revenue/rows"
+          }
+        },
+        {
+          "component": "Button",
+          "id": "back_btn",
+          "child": "back_btn_txt",
+          "action": {
+            "event": {
+              "name": "get_hotels",
+              "context": {
+                "prompt": "Back to gallery"
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "back_btn_txt",
+          "text": "Back to gallery"
+        }
+      ]
+    }
+  }
+]

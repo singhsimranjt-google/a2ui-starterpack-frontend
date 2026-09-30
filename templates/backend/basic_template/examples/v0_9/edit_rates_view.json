@@ -1,0 +1,154 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "edit_rates_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "edit_rates_surface",
+      "path": "/application/hotel_id",
+      "value": "hotel_01"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "edit_rates_surface",
+      "path": "/rates",
+      "value": {
+        "rows": []
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "edit_rates_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "rates_card"
+          ]
+        },
+        {
+          "component": "Card",
+          "id": "rates_card",
+          "child": "rates_content"
+        },
+        {
+          "component": "Column",
+          "id": "rates_content",
+          "children": [
+            "rates_header",
+            "rates_hint",
+            "rates_table",
+            "rates_actions"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "rates_header",
+          "text": "Edit Room Rates",
+          "variant": "h4"
+        },
+        {
+          "component": "Text",
+          "id": "rates_hint",
+          "text": "Edit values in the 'Rate' and 'Available' columns, then click Save.",
+          "variant": "caption"
+        },
+        {
+          "component": "Table",
+          "id": "rates_table",
+          "columns": [
+            {
+              "key": "room_type",
+              "label": "Room Type"
+            },
+            {
+              "key": "max_guests",
+              "label": "Max Guests",
+              "type": "number"
+            },
+            {
+              "key": "rate_eur",
+              "label": "Rate (\u20ac)",
+              "type": "number",
+              "editable": true
+            },
+            {
+              "key": "available_rooms",
+              "label": "Available",
+              "type": "number",
+              "editable": true
+            }
+          ],
+          "rows": {
+            "path": "/rates/rows"
+          }
+        },
+        {
+          "component": "Row",
+          "id": "rates_actions",
+          "children": [
+            "save_rates_btn",
+            "cancel_btn"
+          ]
+        },
+        {
+          "component": "Button",
+          "id": "save_rates_btn",
+          "child": "save_rates_btn_txt",
+          "variant": "primary",
+          "action": {
+            "event": {
+              "name": "save_room_rates",
+              "context": {
+                "prompt": "Saved my edits to the room rates.",
+                "hotel_id": {
+                  "path": "/application/hotel_id"
+                },
+                "rows": {
+                  "path": "/rates/rows"
+                }
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "save_rates_btn_txt",
+          "text": "Save Rates"
+        },
+        {
+          "component": "Button",
+          "id": "cancel_btn",
+          "child": "cancel_btn_txt",
+          "variant": "borderless",
+          "action": {
+            "event": {
+              "name": "get_hotel_dashboard",
+              "context": {
+                "prompt": "Cancel editing and go back to dashboard.",
+                "hotel_id": {
+                  "path": "/application/hotel_id"
+                }
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "cancel_btn_txt",
+          "text": "Cancel"
+        }
+      ]
+    }
+  }
+]

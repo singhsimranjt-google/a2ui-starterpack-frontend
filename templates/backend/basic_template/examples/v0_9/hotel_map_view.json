@@ -1,0 +1,106 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "map_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "map_surface",
+      "path": "/locations",
+      "value": {
+        "rows": []
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "map_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "map_card"
+          ]
+        },
+        {
+          "component": "Card",
+          "id": "map_card",
+          "child": "map_col"
+        },
+        {
+          "component": "Column",
+          "id": "map_col",
+          "children": [
+            "map_title",
+            "map_image",
+            "map_table",
+            "back_btn"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "map_title",
+          "text": "Hotel Locations",
+          "variant": "h4"
+        },
+        {
+          "component": "Image",
+          "id": "map_image",
+          "url": {
+            "path": "/plots/placeholder"
+          },
+          "description": "Map of hotel locations"
+        },
+        {
+          "component": "Table",
+          "id": "map_table",
+          "columns": [
+            {
+              "key": "hotel",
+              "label": "Hotel"
+            },
+            {
+              "key": "city",
+              "label": "City"
+            },
+            {
+              "key": "lat",
+              "label": "Latitude"
+            },
+            {
+              "key": "lng",
+              "label": "Longitude"
+            }
+          ],
+          "rows": {
+            "path": "/locations/rows"
+          }
+        },
+        {
+          "component": "Button",
+          "id": "back_btn",
+          "child": "back_btn_txt",
+          "action": {
+            "event": {
+              "name": "get_hotels",
+              "context": {
+                "prompt": "Back to gallery"
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "back_btn_txt",
+          "text": "Back to gallery"
+        }
+      ]
+    }
+  }
+]

@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Google ADK & A2UI Clinic Scheduling Agent definition."""
+"""Google ADK & A2UI Hotel Portfolio Manager Agent definition."""
 
 import os
 from google.adk.agents import llm_agent
@@ -21,7 +21,6 @@ from google.genai import types
 from a2ui.schema import common_modifiers
 from a2ui.schema import constants as a2ui_constants
 from a2ui.schema import manager as a2ui_schema_manager
-from a2ui.basic_catalog.provider import BasicCatalog
 
 from . import a2ui_utils
 from .config import config
@@ -29,10 +28,7 @@ from .prompt import ROLE_DESCRIPTION, UI_DESCRIPTION
 from . import tools
 
 _EXAMPLES_DIR = os.path.join(os.path.dirname(__file__), "examples/v0_9")
-_CATALOG_CONFIG = BasicCatalog.get_config(
-    version=a2ui_constants.VERSION_0_9,
-    examples_path=_EXAMPLES_DIR,
-)
+_CATALOG_CONFIG = a2ui_utils.get_catalog_config(examples_path=_EXAMPLES_DIR)
 
 _SCHEMA_MANAGER = a2ui_schema_manager.A2uiSchemaManager(
     version=a2ui_constants.VERSION_0_9,
@@ -55,11 +51,13 @@ root_agent = llm_agent.LlmAgent(
     description=config.agent_description,
     instruction=instruction,
     tools=[
-        tools.get_doctors_for_department,
-        tools.check_doctor_availability,
-        tools.confirm_appointment,
-        tools.get_appointment_history,
-        tools.reset_to_departments,
+        tools.get_hotels,
+        tools.get_hotel_dashboard,
+        tools.get_revenue_by_city,
+        tools.get_hotel_map,
+        tools.get_room_rates,
+        tools.save_room_rates,
+        tools.submit_maintenance_request,
         tools.restart_flow,
     ],
     after_model_callback=a2ui_utils.a2ui_callback,

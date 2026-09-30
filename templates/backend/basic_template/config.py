@@ -11,8 +11,8 @@ load_dotenv()
 class Config:
     """Runtime configuration for the todo list agent service."""
 
-    agent_id: str = "clinic_scheduling_agent"
-    agent_name: str = "Clinic Scheduling Agent"
+    agent_id: str = "hotel_portfolio_manager"
+    agent_name: str = "Hotel Portfolio Manager"
     agent_description: str = "Generated A2UI Agent."
     gemini_model: str = os.getenv("GEMINI_MODEL", "gemini-2.5-pro")
     api_key: str = os.getenv("GEMINI_API_KEY", "")

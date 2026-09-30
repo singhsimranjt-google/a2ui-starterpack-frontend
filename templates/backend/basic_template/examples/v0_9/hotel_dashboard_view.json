@@ -1,0 +1,315 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "hotel_dashboard_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "hotel_dashboard_surface",
+      "path": "/hotel_details",
+      "value": {
+        "hotel_id": "hotel_01",
+        "name": "The Londoner",
+        "city": "London",
+        "image_url": "https://picsum.photos/seed/hotel_01/800/500"
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "hotel_dashboard_surface",
+      "path": "/kpis",
+      "value": {
+        "rows": []
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "hotel_dashboard_surface",
+      "path": "/reviews",
+      "value": {
+        "rows": []
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "hotel_dashboard_surface",
+      "path": "/staff",
+      "value": {
+        "rows": []
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "hotel_dashboard_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "dashboard_card"
+          ]
+        },
+        {
+          "component": "Card",
+          "id": "dashboard_card",
+          "child": "dashboard_col"
+        },
+        {
+          "component": "Column",
+          "id": "dashboard_col",
+          "children": [
+            "header_image",
+            "header_text_col",
+            "dashboard_tabs",
+            "dashboard_actions"
+          ]
+        },
+        {
+          "component": "Image",
+          "id": "header_image",
+          "variant": "header",
+          "url": {
+            "path": "/hotel_details/image_url"
+          },
+          "description": {
+            "path": "/hotel_details/name"
+          }
+        },
+        {
+          "component": "Column",
+          "id": "header_text_col",
+          "children": [
+            "hotel_title",
+            "hotel_subtitle"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "hotel_title",
+          "text": {
+            "path": "/hotel_details/name"
+          },
+          "variant": "h3"
+        },
+        {
+          "component": "Text",
+          "id": "hotel_subtitle",
+          "text": {
+            "path": "/hotel_details/city"
+          },
+          "variant": "caption"
+        },
+        {
+          "component": "Tabs",
+          "id": "dashboard_tabs",
+          "tabs": [
+            {
+              "title": "Overview",
+              "child": "overview_grid"
+            },
+            {
+              "title": "Occupancy",
+              "child": "occupancy_chart"
+            },
+            {
+              "title": "Reviews",
+              "child": "reviews_table"
+            },
+            {
+              "title": "Staff",
+              "child": "staff_grid"
+            }
+          ]
+        },
+        {
+          "component": "Grid",
+          "id": "overview_grid",
+          "children": {
+            "componentId": "kpi_card_template",
+            "path": "/kpis/rows"
+          }
+        },
+        {
+          "component": "Card",
+          "id": "kpi_card_template",
+          "child": "kpi_col"
+        },
+        {
+          "component": "Column",
+          "id": "kpi_col",
+          "children": [
+            "kpi_label",
+            "kpi_value"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "kpi_label",
+          "variant": "h5",
+          "text": {
+            "path": "label"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "kpi_value",
+          "variant": "h4",
+          "text": {
+            "call": "formatString",
+            "args": {
+              "value": "${value} ${unit}"
+            }
+          }
+        },
+        {
+          "component": "VegaChart",
+          "id": "occupancy_chart",
+          "spec": {
+            "path": "/plots/placeholder"
+          }
+        },
+        {
+          "component": "Table",
+          "id": "reviews_table",
+          "columns": [
+            {
+              "key": "date",
+              "label": "Date"
+            },
+            {
+              "key": "guest",
+              "label": "Guest"
+            },
+            {
+              "key": "rating",
+              "label": "Rating",
+              "type": "number"
+            },
+            {
+              "key": "comment",
+              "label": "Comment"
+            }
+          ],
+          "rows": {
+            "path": "/reviews/rows"
+          },
+          "pageSize": 5
+        },
+        {
+          "component": "Grid",
+          "id": "staff_grid",
+          "children": {
+            "componentId": "staff_card_template",
+            "path": "/staff/rows"
+          }
+        },
+        {
+          "component": "Card",
+          "id": "staff_card_template",
+          "child": "staff_col"
+        },
+        {
+          "component": "Column",
+          "id": "staff_col",
+          "children": [
+            "staff_avatar",
+            "staff_name",
+            "staff_role"
+          ]
+        },
+        {
+          "component": "Image",
+          "id": "staff_avatar",
+          "variant": "avatar",
+          "url": {
+            "path": "photo_url"
+          },
+          "description": {
+            "path": "name"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "staff_name",
+          "variant": "h5",
+          "text": {
+            "path": "name"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "staff_role",
+          "variant": "caption",
+          "text": {
+            "path": "role"
+          }
+        },
+        {
+          "component": "Row",
+          "id": "dashboard_actions",
+          "children": [
+            "btn_edit_rates",
+            "btn_back_gallery"
+          ]
+        },
+        {
+          "component": "Button",
+          "id": "btn_edit_rates",
+          "child": "btn_edit_rates_txt",
+          "variant": "primary",
+          "action": {
+            "event": {
+              "name": "get_room_rates",
+              "context": {
+                "hotel_id": {
+                  "path": "/hotel_details/hotel_id"
+                },
+                "prompt": {
+                  "call": "formatString",
+                  "args": {
+                    "value": "Edit room rates for ${/hotel_details/name}"
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "btn_edit_rates_txt",
+          "text": "Edit Room Rates"
+        },
+        {
+          "component": "Button",
+          "id": "btn_back_gallery",
+          "child": "btn_back_gallery_txt",
+          "action": {
+            "event": {
+              "name": "get_hotels",
+              "context": {
+                "prompt": "Back to gallery"
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "btn_back_gallery_txt",
+          "text": "Back to Gallery"
+        }
+      ]
+    }
+  }
+]

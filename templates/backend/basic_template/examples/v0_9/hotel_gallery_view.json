@@ -1,0 +1,310 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "hotel_gallery_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateDataModel": {
+      "surfaceId": "hotel_gallery_surface",
+      "path": "/hotels",
+      "value": {
+        "rows": []
+      }
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "hotel_gallery_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "gallery_title",
+            "nav_buttons",
+            "hotel_grid"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "gallery_title",
+          "text": "Hotel Portfolio",
+          "variant": "h3"
+        },
+        {
+          "component": "Row",
+          "id": "nav_buttons",
+          "children": [
+            "btn_revenue",
+            "btn_map",
+            "btn_maint"
+          ]
+        },
+        {
+          "component": "Button",
+          "id": "btn_revenue",
+          "child": "btn_revenue_txt",
+          "action": {
+            "event": {
+              "name": "get_revenue_by_city",
+              "context": {
+                "prompt": "Show portfolio revenue"
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "btn_revenue_txt",
+          "text": "Portfolio Revenue"
+        },
+        {
+          "component": "Button",
+          "id": "btn_map",
+          "child": "btn_map_txt",
+          "action": {
+            "event": {
+              "name": "get_hotel_map",
+              "context": {
+                "prompt": "Show hotel map"
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "btn_map_txt",
+          "text": "Hotel Map"
+        },
+        {
+          "component": "Button",
+          "id": "btn_maint",
+          "child": "btn_maint_txt",
+          "variant": "primary",
+          "action": {
+            "event": {
+              "name": "get_hotels",
+              "context": {
+                "prompt": "New maintenance request"
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "btn_maint_txt",
+          "text": "New Maintenance Request"
+        },
+        {
+          "component": "Grid",
+          "id": "hotel_grid",
+          "children": {
+            "componentId": "hotel_card_template",
+            "path": "/hotels/rows"
+          }
+        },
+        {
+          "component": "Card",
+          "id": "hotel_card_template",
+          "child": "card_content_col"
+        },
+        {
+          "component": "Column",
+          "id": "card_content_col",
+          "children": [
+            "hotel_image",
+            "hotel_text_col"
+          ]
+        },
+        {
+          "component": "Image",
+          "id": "hotel_image",
+          "variant": "smallFeature",
+          "fit": "cover",
+          "url": {
+            "path": "image_url"
+          },
+          "description": {
+            "path": "name"
+          }
+        },
+        {
+          "component": "Column",
+          "id": "hotel_text_col",
+          "children": [
+            "hotel_name",
+            "hotel_city",
+            "hotel_stats",
+            "hotel_occupancy",
+            "hotel_adr",
+            "details_modal"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "hotel_name",
+          "variant": "h5",
+          "text": {
+            "path": "name"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "hotel_city",
+          "variant": "caption",
+          "text": {
+            "path": "city"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "hotel_stats",
+          "text": {
+            "call": "formatString",
+            "args": {
+              "value": "${stars}-star - ${rooms} rooms"
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "hotel_occupancy",
+          "text": {
+            "call": "formatString",
+            "args": {
+              "value": "Occupancy: ${occupancy_pct}%"
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "hotel_adr",
+          "text": {
+            "call": "formatCurrency",
+            "args": {
+              "value": {
+                "path": "adr_eur"
+              },
+              "currency": "EUR"
+            }
+          }
+        },
+        {
+          "component": "Row",
+          "id": "details_trigger_row",
+          "children": [
+            "details_icon",
+            "details_text"
+          ]
+        },
+        {
+          "component": "Icon",
+          "id": "details_icon",
+          "name": "info"
+        },
+        {
+          "component": "Text",
+          "id": "details_text",
+          "text": "View details"
+        },
+        {
+          "component": "Modal",
+          "id": "details_modal",
+          "trigger": "details_trigger_row",
+          "content": "details_content_col"
+        },
+        {
+          "component": "Column",
+          "id": "details_content_col",
+          "children": [
+            "manager_row",
+            "amenities_text",
+            "open_dashboard_btn"
+          ]
+        },
+        {
+          "component": "Row",
+          "id": "manager_row",
+          "children": [
+            "manager_avatar",
+            "manager_text_col"
+          ]
+        },
+        {
+          "component": "Image",
+          "id": "manager_avatar",
+          "variant": "avatar",
+          "description": "Manager photo",
+          "url": {
+            "path": "manager_photo_url"
+          }
+        },
+        {
+          "component": "Column",
+          "id": "manager_text_col",
+          "children": [
+            "manager_name",
+            "manager_phone"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "manager_name",
+          "text": {
+            "path": "manager_name"
+          },
+          "variant": "h5"
+        },
+        {
+          "component": "Text",
+          "id": "manager_phone",
+          "text": {
+            "path": "manager_phone"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "amenities_text",
+          "text": {
+            "call": "formatString",
+            "args": {
+              "value": "Amenities: ${amenities_str}"
+            }
+          }
+        },
+        {
+          "component": "Button",
+          "id": "open_dashboard_btn",
+          "variant": "primary",
+          "child": "open_dashboard_txt",
+          "action": {
+            "event": {
+              "name": "get_hotel_dashboard",
+              "context": {
+                "hotel_id": {
+                  "path": "hotel_id"
+                },
+                "prompt": {
+                  "call": "formatString",
+                  "args": {
+                    "value": "Opened the dashboard for ${name}."
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "open_dashboard_txt",
+          "text": "Open Dashboard"
+        }
+      ]
+    }
+  }
+]

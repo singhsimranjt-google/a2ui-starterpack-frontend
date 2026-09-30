@@ -2359,7 +2359,7 @@ wheels = [
 [[package]]
 name = "weather-agent"
 version = "0.1.0"
-source = { editable = "." }
+source = { virtual = "." }
 dependencies = [
     { name = "a2ui-agent-sdk" },
     { name = "fastapi" },

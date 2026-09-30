@@ -1,0 +1,267 @@
+[
+  {
+    "version": "v0.9",
+    "createSurface": {
+      "surfaceId": "maint_form_surface",
+      "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
+    }
+  },
+  {
+    "version": "v0.9",
+    "updateComponents": {
+      "surfaceId": "maint_form_surface",
+      "components": [
+        {
+          "component": "Column",
+          "id": "root",
+          "children": [
+            "form_card"
+          ]
+        },
+        {
+          "component": "Card",
+          "id": "form_card",
+          "child": "form_col"
+        },
+        {
+          "component": "Column",
+          "id": "form_col",
+          "children": [
+            "form_header",
+            "hotel_picker",
+            "category_picker",
+            "priority_picker",
+            "cost_slider_label",
+            "cost_slider",
+            "desc_input",
+            "due_date_label",
+            "due_date_input",
+            "notify_check",
+            "form_actions"
+          ]
+        },
+        {
+          "component": "Text",
+          "id": "form_header",
+          "text": "New Maintenance Request",
+          "variant": "h4"
+        },
+        {
+          "component": "ChoicePicker",
+          "id": "hotel_picker",
+          "label": "Hotel",
+          "variant": "mutuallyExclusive",
+          "options": [],
+          "value": {
+            "path": "/form/hotel_id"
+          }
+        },
+        {
+          "component": "ChoicePicker",
+          "id": "category_picker",
+          "label": "Category",
+          "options": [
+            {
+              "label": "Plumbing",
+              "value": "Plumbing"
+            },
+            {
+              "label": "Electrical",
+              "value": "Electrical"
+            },
+            {
+              "label": "HVAC",
+              "value": "HVAC"
+            },
+            {
+              "label": "Housekeeping",
+              "value": "Housekeeping"
+            },
+            {
+              "label": "IT",
+              "value": "IT"
+            }
+          ],
+          "value": {
+            "path": "/form/category"
+          }
+        },
+        {
+          "component": "ChoicePicker",
+          "id": "priority_picker",
+          "label": "Priority",
+          "options": [
+            {
+              "label": "Low",
+              "value": "Low"
+            },
+            {
+              "label": "Medium",
+              "value": "Medium"
+            },
+            {
+              "label": "High",
+              "value": "High"
+            },
+            {
+              "label": "Critical",
+              "value": "Critical"
+            }
+          ],
+          "value": {
+            "path": "/form/priority"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "cost_slider_label",
+          "text": "Estimated Cost (\u20ac)"
+        },
+        {
+          "component": "Slider",
+          "id": "cost_slider",
+          "min": 0,
+          "max": 5000,
+          "value": {
+            "path": "/form/cost"
+          }
+        },
+        {
+          "component": "TextField",
+          "id": "desc_input",
+          "label": "Description",
+          "variant": "longText",
+          "value": {
+            "path": "/form/description"
+          }
+        },
+        {
+          "component": "Text",
+          "id": "due_date_label",
+          "text": "Due Date"
+        },
+        {
+          "component": "DateTimeInput",
+          "id": "due_date_input",
+          "enableDate": true,
+          "value": {
+            "path": "/form/due_date"
+          }
+        },
+        {
+          "component": "CheckBox",
+          "id": "notify_check",
+          "label": "Notify the general manager",
+          "value": {
+            "path": "/form/notify"
+          }
+        },
+        {
+          "component": "Row",
+          "id": "form_actions",
+          "children": [
+            "submit_btn",
+            "cancel_btn"
+          ]
+        },
+        {
+          "component": "Button",
+          "id": "submit_btn",
+          "child": "submit_btn_txt",
+          "variant": "primary",
+          "checks": [
+            {
+              "condition": {
+                "call": "length",
+                "args": {
+                  "value": {
+                    "path": "/form/hotel_id"
+                  },
+                  "min": 1
+                }
+              },
+              "message": "Hotel is required."
+            },
+            {
+              "condition": {
+                "call": "length",
+                "args": {
+                  "value": {
+                    "path": "/form/category"
+                  },
+                  "min": 1
+                }
+              },
+              "message": "Category is required."
+            },
+            {
+              "condition": {
+                "call": "length",
+                "args": {
+                  "value": {
+                    "path": "/form/description"
+                  },
+                  "min": 10
+                }
+              },
+              "message": "Description must be at least 10 characters."
+            }
+          ],
+          "action": {
+            "event": {
+              "name": "submit_maintenance_request",
+              "context": {
+                "prompt": "Submitted a new maintenance request.",
+                "hotel_id": {
+                  "path": "/form/hotel_id"
+                },
+                "category": {
+                  "path": "/form/category"
+                },
+                "priority": {
+                  "path": "/form/priority"
+                },
+                "estimated_cost_eur": {
+                  "path": "/form/cost"
+                },
+                "description": {
+                  "path": "/form/description"
+                },
+                "due_date": {
+                  "path": "/form/due_date"
+                },
+                "notify_manager": {
+                  "path": "/form/notify"
+                }
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "submit_btn_txt",
+          "text": "Submit Request"
+        },
+        {
+          "component": "Button",
+          "id": "cancel_btn",
+          "variant": "borderless",
+          "child": "cancel_btn_txt",
+          "action": {
+            "event": {
+              "name": "get_hotels",
+              "context": {
+                "prompt": "Cancel and go back to gallery"
+              }
+            }
+          }
+        },
+        {
+          "component": "Text",
+          "id": "cancel_btn_txt",
+          "text": "Cancel"
+        }
+      ]
+    }
+  }
+]

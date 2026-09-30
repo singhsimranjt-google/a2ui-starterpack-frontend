@@ -1,0 +1,58 @@
+Build a "Hotel Portfolio Manager" agent for the regional operations manager of a boutique hotel group.
+Output folder: hotel_portfolio_manager.
+
+DATA (mock, deterministic - random.seed(7), no external APIs except the existing viz helpers):
+- 8 hotels in 4 cities (London, Paris, Barcelona, Lisbon; 2 each) with: hotel_id, name, city, stars (3-5),
+  rooms, occupancy_pct, adr_eur, revpar_eur, guest_rating (0-5), lat, lng, amenities (list of 3-5 strings),
+  image_url, and a general manager (manager_id, name, phone, photo_url).
+- image_url MUST be "https://picsum.photos/seed/<hotel_id>/800/500".
+- photo_url for every person MUST be "https://i.pravatar.cc/150?u=<person_id>".
+- The agent must NEVER invent or modify image URLs; it only binds the ones returned by tools.
+
+VIEWS AND TOOLS:
+1. Welcome view (standard welcome card, capabilities + one starter prompt).
+
+2. Hotel gallery - tool get_hotels():
+   A Grid of hotel cards defined ONCE as a template bound to /hotels/rows (never one component per hotel).
+   Each card: hotel photo (Image, variant smallFeature, fit cover), name (h5), city (caption),
+   "<stars>-star - <rooms> rooms" via formatString, occupancy via formatString ("Occupancy: ${occupancy_pct}%"),
+   ADR via formatCurrency (EUR).
+   Each card also has a "View details" Modal: the trigger is a Row with an info Icon + Text (NOT a Button);
+   the content shows the manager photo (Image, variant avatar), manager name, phone, amenities as a comma
+   string, and a primary Button "Open dashboard" that sends {"hotel_id": {"path": "hotel_id"}}.
+   If the user asks for N columns, set Grid.columns; otherwise omit it.
+
+3. Hotel dashboard - tool get_hotel_dashboard(hotel_id):
+   Card with the hotel photo (Image, variant header) and name (h3) + city (caption), then Tabs:
+   - "Overview": a Grid of 4 KPI cards (ADR and RevPAR with formatCurrency, occupancy %, guest rating),
+     using a template over /kpis/rows (each row: label, value, unit).
+   - "Occupancy": VegaChart line chart of the last 12 months occupancy vs last year (plot_path from viz).
+   - "Reviews": Table of the latest 8 reviews (date, guest, rating number, comment).
+   - "Staff": Grid of staff cards (Image avatar, name h5, role caption) over /staff/rows.
+   Below the Tabs: Buttons "Edit room rates" (sends hotel_id) and "Back to gallery" (calls get_hotels).
+
+4. Portfolio revenue - tool get_revenue_by_city():
+   Chart (bar) of revenue by city + Table of the same rows. Offer "show it as a pie" without a new tool call.
+
+5. Hotel map - tool get_hotel_map():
+   Google map Image from viz.save_google_map (fallback VegaChart from viz.save_map when no map_path),
+   plus a Table of hotel, city, lat, lng.
+
+6. Edit room rates - tools get_room_rates(hotel_id) and save_room_rates(hotel_id, rows):
+   Editable Table (room_type and max_guests read-only; rate_eur and available_rooms editable).
+   Save Button sends rows from the SAME path + hotel_id. After saving, show a confirmation card with a
+   Table of the saved rows and a "Back to dashboard" Button calling get_hotel_dashboard(hotel_id).
+
+7. Maintenance request - tool submit_maintenance_request(hotel_id, category, priority, estimated_cost_eur,
+   description, due_date, notify_manager):
+   Form with: ChoicePicker hotel (options from get_hotels, single select), ChoicePicker category
+   (Plumbing, Electrical, HVAC, Housekeeping, IT), ChoicePicker priority (Low, Medium, High, Critical),
+   Slider estimated cost (0-5000 EUR), TextField description (longText), DateTimeInput due date (date only),
+   CheckBox "Notify the general manager".
+   The Submit Button uses checks: hotel and category required, description length min 10.
+   Confirmation view: summary Text lines + the hotel photo (Image, variant mediumFeature) + a
+   "Return to gallery" Button calling get_hotels.
+
+8. restart_flow() returns to the Welcome view.
+
+Every view MUST have a way back (gallery or welcome). Use Icons only from the allowed list.

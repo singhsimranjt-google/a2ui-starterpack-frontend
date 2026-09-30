@@ -2,14 +2,14 @@
   {
     "version": "v0.9",
     "createSurface": {
-      "surfaceId": "clinic_welcome_surface",
+      "surfaceId": "hotel_welcome_surface",
       "catalogId": "https://a2ui.org/specification/v0_9/material_catalog.json"
     }
   },
   {
     "version": "v0.9",
     "updateComponents": {
-      "surfaceId": "clinic_welcome_surface",
+      "surfaceId": "hotel_welcome_surface",
       "components": [
         {
           "component": "Column",
@@ -32,6 +32,7 @@
             "welcome_div_1",
             "cap_row_1",
             "cap_row_2",
+            "cap_row_3",
             "welcome_div_2",
             "welcome_try_label",
             "starter_row_1"
@@ -40,14 +41,14 @@
         {
           "component": "Text",
           "id": "welcome_title",
-          "variant": "h3",
-          "text": "Clinic Scheduling Assistant"
+          "text": "Hotel Portfolio Manager",
+          "variant": "h3"
         },
         {
           "component": "Text",
           "id": "welcome_subtitle",
-          "variant": "body",
-          "text": "How can I help you today?"
+          "text": "Welcome, Manager. Here you can browse your hotel portfolio, track performance, and manage operations.",
+          "variant": "body"
         },
         {
           "component": "Divider",
@@ -64,13 +65,13 @@
         {
           "component": "Icon",
           "id": "cap_icon_1",
-          "name": "add"
+          "name": "photo"
         },
         {
           "component": "Text",
           "id": "cap_text_1",
-          "variant": "body",
-          "text": "Find a doctor and book an appointment"
+          "text": "View a gallery of all hotels in your portfolio",
+          "variant": "body"
         },
         {
           "component": "Row",
@@ -83,13 +84,32 @@
         {
           "component": "Icon",
           "id": "cap_icon_2",
-          "name": "event"
+          "name": "star"
         },
         {
           "component": "Text",
           "id": "cap_text_2",
-          "variant": "body",
-          "text": "View my appointment history"
+          "text": "Analyze portfolio-wide revenue and KPIs",
+          "variant": "body"
+        },
+        {
+          "component": "Row",
+          "id": "cap_row_3",
+          "children": [
+            "cap_icon_3",
+            "cap_text_3"
+          ]
+        },
+        {
+          "component": "Icon",
+          "id": "cap_icon_3",
+          "name": "edit"
+        },
+        {
+          "component": "Text",
+          "id": "cap_text_3",
+          "text": "Submit and track maintenance requests",
+          "variant": "body"
         },
         {
           "component": "Divider",
@@ -98,8 +118,8 @@
         {
           "component": "Text",
           "id": "welcome_try_label",
-          "variant": "h5",
-          "text": "Try saying:"
+          "text": "Try saying:",
+          "variant": "h5"
         },
         {
           "component": "Row",
@@ -117,11 +137,10 @@
         {
           "component": "Text",
           "id": "starter_text_1",
-          "variant": "body",
-          "text": "\"Find a doctor and book an appointment\""
+          "text": "\"Show me the hotel gallery\"",
+          "variant": "body"
         }
       ]
-    },
-    "version": "v0.9"
+    }
   }
 ]
