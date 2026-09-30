@@ -130,8 +130,6 @@ def _load_valid_icon_names():
 VALID_ICON_NAMES = _load_valid_icon_names()
 
 
-
-
 A2UI_BOILERPLATE_PROMPT = r"""
 ### CRITICAL OUTPUT FORMAT & A2UI SPECIFICATION (MANDATORY):
 - ALWAYS output your responses directly as text in the message body.
@@ -140,7 +138,8 @@ A2UI_BOILERPLATE_PROMPT = r"""
 - **MANDATORY TEMPLATE FIDELITY (Basic Catalog v0.9)**:
   - You MUST refer directly to the provided example JSON files in your system instructions when generating A2UI cards.
   - The `catalogId` in `createSurface` MUST strictly be `"https://a2ui.org/specification/v0_9/catalogs/basic/catalog.json"`.
-  - You MUST strictly follow the exact component hierarchy, component types (`Card`, `Column`, `Row`, `Text`, `Icon`, `Divider`, `Button`, `Image`), and allowed properties defined in each example JSON file without adding any extra or invalid attributes.
+  - EVERY message object in the array (`createSurface`, `updateComponents`, `updateDataModel`, `deleteSurface`) MUST include `"version": "v0.9"` as a top-level key, e.g. `{"version": "v0.9", "createSurface": {...}}`. Omitting it fails schema validation and the server will not start.
+  - You MUST strictly follow the exact component hierarchy, component types (`Card`, `Column`, `Row`, `List`, `Grid`, `Tabs`, `Modal`, `Text`, `Icon`, `Divider`, `Button`, `Image`, `TextField`, `CheckBox`, `DateTimeInput`, `ChoicePicker`, `Slider`, `Table`, `Chart`, `VegaChart`), and allowed properties defined in each example JSON file without adding any extra or invalid attributes.
   - **NO STYLING OR SIZING PROPERTIES**: Do NOT include `"style"`, `"padding"`, `"margin"`, `"spacing"`, `"gap"`, `"justifyContent"`, `"alignItems"`, `"width"`, or `"height"` on any components. All components must strictly conform to Basic Catalog schema.
   - `Text`: Valid `variant` values are strictly `"h1"`, `"h2"`, `"h3"`, `"h4"`, `"h5"`, `"caption"`, `"body"` (this is the exact enum from the v0.9 catalog schema; `"body"` is the default). Use headings for titles and `"body"`/`"caption"` for content. Do NOT invent any other variant.
   - `Icon`: Valid `name` values must be strictly chosen from this list: "accountCircle", "add", "arrowBack", "arrowForward", "attachFile", "calendarToday", "call", "camera", "check", "close", "delete", "download", "edit", "event", "error", "favorite", "home", "info", "mail", "menu", "person", "phone", "search", "settings", "star", "warning". Do not use variants like "check_circle".
@@ -445,6 +444,78 @@ def welcome_view_enabled(*texts):
     return True
 
 
+PROMPT_BLOCK_NAMES = {"WELCOME_VIEW_BLOCK", "A2UI_BOILERPLATE_PROMPT", "VISUAL_COMPONENTS_BLOCK"}
+
+def build_generated_prompt(content, welcome_enabled):
+    """Rebuild the Coder's prompt.py around the template's prompt_blocks.py.
+
+    Whatever the Coder copied (block definitions, imports, its own
+    "UI_DESCRIPTION = A2UI_BOILERPLATE_PROMPT + ..." line) is removed via the AST,
+    then the shared blocks are imported and concatenated exactly once.
+    """
+    import ast
+
+    tree = ast.parse(content)
+    drop = set()
+    for node in tree.body:
+        remove = False
+        if isinstance(node, ast.ImportFrom):
+            remove = (node.module or "").endswith("prompt_blocks") or bool(
+                {a.name for a in node.names} & PROMPT_BLOCK_NAMES)
+        elif isinstance(node, ast.Assign):
+            targets = {t.id for t in node.targets if isinstance(t, ast.Name)}
+            if targets & PROMPT_BLOCK_NAMES:
+                remove = True
+            elif "UI_DESCRIPTION" in targets:
+                remove = any(isinstance(n, ast.Name) and n.id in PROMPT_BLOCK_NAMES
+                             for n in ast.walk(node.value))
+        if remove:
+            drop.update(range(node.lineno, node.end_lineno + 1))
+    lines = content.splitlines()
+    body = "\n".join(l for i, l in enumerate(lines, 1) if i not in drop).strip()
+
+    parts = ["A2UI_BOILERPLATE_PROMPT", "VISUAL_COMPONENTS_BLOCK"]
+    if welcome_enabled:
+        parts.append("WELCOME_VIEW_BLOCK")
+    parts.append("UI_DESCRIPTION")
+    return (
+        "from .prompt_blocks import A2UI_BOILERPLATE_PROMPT, VISUAL_COMPONENTS_BLOCK, WELCOME_VIEW_BLOCK\n\n"
+        + body
+        + "\n\nUI_DESCRIPTION = (\n    " + "\n    + '\\n\\n' + ".join(parts) + "\n)\n"
+    )
+
+
+def _schema_errors(filename, parsed):
+    """Validate one example with the SAME a2ui validator the generated server runs at startup."""
+    import importlib
+    import json
+    import tempfile
+
+    try:
+        from a2ui.schema import common_modifiers, constants, manager
+        utils = importlib.import_module(f"{TEMPLATE_DIR_NAME}.a2ui_utils")
+    except Exception as exc:  # noqa: BLE001 - never block generation on tooling
+        print(f"⚠️  Schema check skipped ({exc}).")
+        return []
+    tmp = tempfile.mkdtemp(prefix="a2ui_check_")
+    try:
+        with open(os.path.join(tmp, os.path.basename(filename)), "w") as f:
+            json.dump(parsed, f)
+        mgr = manager.A2uiSchemaManager(
+            version=constants.VERSION_0_9,
+            catalogs=[utils.get_catalog_config(examples_path=tmp)],
+            schema_modifiers=[common_modifiers.remove_strict_validation],
+        )
+        mgr.generate_system_prompt(role_description="x", ui_description="x",
+                                   include_schema=False, include_examples=True,
+                                   validate_examples=True)
+        return []
+    except Exception as exc:  # noqa: BLE001
+        return [f"{filename}: SCHEMA ERROR - {str(exc).split(': ', 1)[-1]}"]
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 def validate_generated_code(response_text):
     """Deterministically validate the Coder's output. Returns a list of error strings.
 
@@ -471,6 +542,18 @@ def validate_generated_code(response_text):
                 f"Offending line: {(exc.text or '').strip()!r}"
             )
 
+    prompt_src = extract_file_content(response_text, "prompt.py") or ""
+    prompt_src = re.sub(r"^```[a-zA-Z]*\n", "", prompt_src)
+    prompt_src = re.sub(r"\n```$", "", prompt_src).strip()
+    try:
+        assigned = {t.id for n in ast.parse(prompt_src).body if isinstance(n, ast.Assign)
+                    for t in n.targets if isinstance(t, ast.Name)}
+        for name in ("ROLE_DESCRIPTION", "UI_DESCRIPTION"):
+            if prompt_src and name not in assigned:
+                errors.append(f"prompt.py: {name} is not defined.")
+    except SyntaxError:
+        pass  # already reported above
+
     json_files = [
         f for f in re.findall(r'<file name="([^"]+)">', response_text) if f.endswith(".json")
     ]
@@ -489,6 +572,17 @@ def validate_generated_code(response_text):
             errors.append(f"{filename}: INVALID JSON - {exc}")
             continue
 
+        # Every A2UI message must carry "version": "v0.9"; the SDK's
+        # validate_examples=True rejects the file (and the server won't boot).
+        messages = parsed if isinstance(parsed, list) else [parsed]
+        for idx, msg in enumerate(messages):
+            if isinstance(msg, dict) and msg.get("version") != "v0.9":
+                kind = next((k for k in msg if k != "version"), "message")
+                errors.append(
+                    f'{filename}: messages[{idx}] ({kind}) MISSING "version": "v0.9" '
+                    f"- add it as a top-level key next to \"{kind}\"."
+                )
+
         # Icon names must come from the catalog enum. LLMs habitually emit
         # Material Design snake_case ("calendar_month") instead of the
         # catalog's camelCase ("calendarToday"), which hard-fails the React
@@ -500,8 +594,30 @@ def validate_generated_code(response_text):
                 f"catalog enum. Use {hint} instead. Valid names are camelCase, "
                 f"never snake_case."
             )
+        
+        # Validate full A2UI Schema
+        errors.extend(_schema_errors(filename, parsed))
+
+        # Templates must stay responsive: `columns` is a runtime choice only.
+        for node in _iter_components(parsed):
+            if node.get("component") == "Grid" and "columns" in node:
+                errors.append(f'{filename}: Grid "{node.get("id")}" sets "columns" - '
+                              "remove it; example templates must stay responsive.")
+            if node.get("component") != "Button" and "action" in node:
+                errors.append(f'{filename}: {node.get("component")} "{node.get("id")}" has '
+                              '"action" - only Button supports action.')
+
 
     return errors
+
+
+def _iter_components(parsed):
+    """Yield every component dict from every updateComponents message."""
+    for msg in parsed if isinstance(parsed, list) else [parsed]:
+        if isinstance(msg, dict):
+            for comp in (msg.get("updateComponents") or {}).get("components", []):
+                if isinstance(comp, dict):
+                    yield comp
 
 
 def _collect_invalid_icon_names(node, found=None):
@@ -539,6 +655,27 @@ def _suggest_icon_name(bad_name):
     if close:
         return "one of " + ", ".join(f'"{c}"' for c in close)
     return 'a valid name such as "info", "check" or "star"'
+
+END_MARKER = "END"
+
+def read_multiline(prompt_text=""):
+    """Read lines until a line containing only END (or Ctrl-D).
+
+    Blank lines are kept, so a pasted prompt with paragraphs arrives as ONE message.
+    """
+    if prompt_text:
+        print(prompt_text)
+    print(f"  (paste freely; finish with a line containing only {END_MARKER}, or Ctrl-D)")
+    lines = []
+    while True:
+        try:
+            line = input("> " if not lines else "  ")
+        except EOFError:
+            break
+        if line.strip() == END_MARKER:
+            break
+        lines.append(line)
+    return "\n".join(lines).strip()
 
 
 def find_template_dir():
@@ -610,6 +747,8 @@ def main():
     7. Apply the FLOW PRECEDENCE POLICY below on every turn: the user's explicit instruction always beats the default flow, but anything vague, missing, or ambiguous falls back to the default flow rather than a question or an invention.
     8. The Welcome / Capabilities step is ON by default and you must keep it. ONLY if the user EXPLICITLY asks to remove it (e.g. "no welcome screen", "skip the intro", "don't show capabilities"), you MUST include the exact sentinel tag <WELCOME_VIEW>off</WELCOME_VIEW> in your final summary message. Never emit this tag otherwise, and never mention it to the user.
     9. Once the user approves the flow and you have a complete understanding, summarize the final plan - including the exact wording of the single suggested starter prompt - and then end your message with exactly the phrase '<PLAN_READY>'.
+    10. Whenever the user requests ANY change, you MUST redraw the COMPLETE updated ASCII flowchart (every view, every arrow, including the ones that did not change) and ask for approval again. Never answer a change request with a text summary only, and do NOT output <PLAN_READY> in that message.
+    11. Output <PLAN_READY> only after the user approves the latest flowchart. That final message MUST contain the final ASCII flowchart first, then the plan summary, then <PLAN_READY>.
 """ + FLOW_PRECEDENCE_RULES
     chat = client.chats.create(model=PLANNER_MODEL, config={"system_instruction": planner_instruction})
     
@@ -619,19 +758,40 @@ def main():
     
     # Accept the idea from argv (Node CLI passes it) and fall back to a prompt
     # for standalone `python root_agent.py` usage.
-    if len(sys.argv) > 1 and sys.argv[1].strip():
-        app_idea = sys.argv[1].strip()
+    # if len(sys.argv) > 1 and sys.argv[1].strip():
+    #     app_idea = sys.argv[1].strip()
+    #     print(f"What kind of agent do you want to build?:\n> {app_idea}")
+    # else:
+    #     app_idea = read_multiline("What kind of agent do you want to build?:")
+
+    arg = sys.argv[1].strip() if len(sys.argv) > 1 else ""
+    if arg and os.path.isfile(arg):
+        with open(arg, "r") as f:
+            app_idea = f.read().strip()
+        print(f"What kind of agent do you want to build?:\n(loaded {len(app_idea)} chars from {arg})")
+    elif arg:
+        app_idea = arg
         print(f"What kind of agent do you want to build?:\n> {app_idea}")
     else:
-        app_idea = input("What kind of agent do you want to build?:\n> ")
+        app_idea = read_multiline("What kind of agent do you want to build?:")
+
 
     response = chat.send_message(app_idea)
     planner_transcript = response.text
     while True:
         print(f"\n[Planner Agent]: {response.text}")
+        # a code guard so a missing diagram can never slip through
         if "<PLAN_READY>" in response.text:
-            break
-        user_reply = input("> ")
+            if re.search(r"\+-{3,}", response.text):
+                break
+            # Final plan without a flowchart: ask once more, deterministically.
+            response = chat.send_message(
+                "Your final plan is missing the ASCII flowchart. Reply again with the COMPLETE "
+                "final flowchart, then the summary, then <PLAN_READY>."
+            )
+            planner_transcript += "\n" + response.text
+            continue
+        user_reply = read_multiline()
         response = chat.send_message(user_reply)
         planner_transcript += "\n" + response.text
 
@@ -664,6 +824,18 @@ def main():
         with open(jf, "r") as f:
             template_json += f"\n=== {os.path.basename(jf)} ===\n" + f.read() + "\n"
 
+    # Shared runtime rules + viz helper, so the Coder/Critic know the Table /
+    # Chart / VegaChart / Google-map rules the generated agent receives.
+    template_blocks = {}
+    with open(os.path.join(template_dir, "prompt_blocks.py"), "r") as f:
+        exec(f.read(), template_blocks)
+    visual_rules = (
+        "\n=== DATA VISUALISATION COMPONENTS (ALLOWED - the generated agent receives these rules automatically) ===\n"
+        + template_blocks["VISUAL_COMPONENTS_BLOCK"]
+        + "\n- REQUIRED FIELDS: to keep a submit Button disabled until a form is valid, use a `checks` array exactly like `discount_form_view.json`. NEVER emit `disabled` on a Button.\n"
+    )
+    with open(os.path.join(template_dir, "viz.py"), "r") as f:
+        template_viz = f.read()
 
     coder_instruction = """You are the Coder Agent.
 Read the user's conversation history (the plan). Generate the Python code for an A2UI backend.
@@ -673,7 +845,7 @@ You must output exactly five things: a folder name, and at least four files (`pr
 2. Wrap the content of EACH file in XML tags: <file name="prompt.py">print('hello')</file>
 3. For JSON templates, use the path `examples/v0_9/your_template_name.json`: <file name="examples/v0_9/main_view.json">{ ... }</file>
 
-""" + A2UI_STRICT_RULES + """
+""" + A2UI_STRICT_RULES + visual_rules + """
 
 CRITICAL INSTRUCTIONS FOR JSON TEMPLATES:
 - **ANTI-HALLUCINATION RULE:** Do NOT rely on your pre-trained web development knowledge to invent JSON layouts. You MUST strictly model your new JSON files after the structural format of standard A2UI v0.9 templates. While your content/use-case will change, the exact schema, component naming, and allowed properties must remain identical to the spec.
@@ -689,15 +861,17 @@ CRITICAL INSTRUCTIONS FOR prompt.py:
 - Example: "The 'Submit' button MUST have an `action` property that calls the `book_flight` tool. The parameters (`destination`, `date`) MUST be bound to the data paths of the form fields: `\"action\": {\"event\": {\"name\": \"book_flight\", \"context\": {\"destination\": {\"path\": \"/form/dest\"}}}`."
 - **CRITICAL:** You MUST explicitly command the agent: "When an event is triggered, you MUST FIRST call the Python tool. Only after the tool returns successfully, you MUST render the new surface."
 - DO NOT output the massive 'CRITICAL OUTPUT FORMAT' boilerplate.
-- DO NOT define `A2UI_BOILERPLATE_PROMPT` and DO NOT write the line `UI_DESCRIPTION = A2UI_BOILERPLATE_PROMPT + ...`; the generator prepends the boilerplate for you.
+- DO NOT define or import `A2UI_BOILERPLATE_PROMPT`, `VISUAL_COMPONENTS_BLOCK` or `WELCOME_VIEW_BLOCK`, and DO NOT write the final `UI_DESCRIPTION = (...)` concatenation - the generator adds them from `prompt_blocks.py`. Define ONLY `ROLE_DESCRIPTION` and your own `UI_DESCRIPTION = r\"\"\"...\"\"\"`.
 
 CRITICAL INSTRUCTIONS FOR tools.py:
-- Write 1 or 2 python functions for backend logic. Provide clear docstrings.
+- Write ONE python function per data view or action in the approved plan (typically 3-8), each with a clear docstring. Keep mock data as module-level constants in tools.py.
+- For visuals, `from . import viz` and follow the template tools.py exactly: `viz.save_chart(rows, ...)` -> return `plot_path` (VegaChart); `viz.save_google_map(points)` -> return `map_path` only when it is not None, and ALWAYS also return `plot_path` from `viz.save_map(points, ...)` as the key-less fallback; `Table`/`Chart` tools return `rows` (a list of flat dicts). Catch `ValueError` from viz and return `{"status": "error", "error": str(exc)}`.
+- A save tool for an editable `Table` takes `rows: list[dict]`, validates it and returns what changed.
 - Python tools MUST NOT use strict date parsing like `date.fromisoformat()` if accepting dates from `DateTimeInput`. Extract the date robustly using `from_date[:10]` or `datetime.fromisoformat()`.
 - DO NOT use the `@tool` decorator or import it. Write raw python functions.
 
 CRITICAL INSTRUCTIONS FOR agent.py:
-- Take the provided template below and ONLY change the `tools=[...]` array at the bottom to match your new tools. Leave all else exactly as is.
+- Take the provided template below and ONLY change the `tools=[...]` array to match your new tools, and remove `from . import well_logs` if none of your tools come from it. Leave all else exactly as is.
 
 =========================================
 """ + WELCOME_VIEW_SPEC + FLOW_PRECEDENCE_RULES + """
@@ -711,6 +885,9 @@ CRITICAL INSTRUCTIONS FOR agent.py:
 
 --- tools.py TEMPLATE ---
 """ + template_tools + """
+
+--- viz.py (READ-ONLY helper already in the package - use it with `from . import viz`, NEVER re-emit it) ---
+""" + template_viz + """
 
 --- prompt.py TEMPLATE ---
 """ + template_prompt + """
@@ -742,7 +919,7 @@ CRITICAL INSTRUCTIONS FOR agent.py:
 You MUST evaluate the code against EVERY SINGLE ITEM in the checklist below, in order. Do not stop at the first error! Write down a step-by-step analysis for EACH numbered checklist item (there are 19). If ANY rules were broken, output <FAIL> at the very end of your response, followed by the complete compiled list of ALL errors found.
 You must specifically check `prompt.py` and the JSON templates for A2UI hallucinations based on these strict rules:
 
-""" + A2UI_STRICT_RULES + """
+""" + A2UI_STRICT_RULES + visual_rules + """
 
 CRITICAL INSTRUCTIONS FOR JSON TEMPLATES:
 - You MUST design perfectly flat JSON arrays matching the A2UI v0.9 `updateComponents` specification defined in the rules above.
@@ -759,19 +936,21 @@ CRITICAL INSTRUCTIONS FOR prompt.py:
 - DO NOT output the massive 'CRITICAL OUTPUT FORMAT' boilerplate.
 
 CRITICAL INSTRUCTIONS FOR tools.py:
-- Write 1 or 2 python functions for backend logic. Provide clear docstrings.
+- Write ONE python function per data view or action in the approved plan (typically 3-8), each with a clear docstring. Keep mock data as module-level constants in tools.py.
+- For visuals, `from . import viz` and follow the template tools.py exactly: `viz.save_chart(rows, ...)` -> return `plot_path` (VegaChart); `viz.save_google_map(points)` -> return `map_path` only when it is not None, and ALWAYS also return `plot_path` from `viz.save_map(points, ...)` as the key-less fallback; `Table`/`Chart` tools return `rows` (a list of flat dicts). Catch `ValueError` from viz and return `{"status": "error", "error": str(exc)}`.
+- A save tool for an editable `Table` takes `rows: list[dict]`, validates it and returns what changed.
 - Python tools MUST NOT use strict date parsing like `date.fromisoformat()` if accepting dates from `DateTimeInput`. Extract the date robustly using `from_date[:10]` or `datetime.fromisoformat()`.
 - DO NOT use the `@tool` decorator or import it. Write raw python functions.
 
 CRITICAL INSTRUCTIONS FOR agent.py:
-- Take the provided template below and ONLY change the `tools=[...]` array at the bottom to match your new tools. Leave all else exactly as is.
+- Take the provided template below and ONLY change the `tools=[...]` array to match your new tools, and remove `from . import well_logs` if none of your tools come from it. Leave all else exactly as is.
 - **WELCOME VIEW IS REQUIRED:** One of your emitted JSON files MUST be
   `examples/v0_9/welcome_view.json`, modeled directly on the `=== welcome_view.json ===`
   golden example provided below, rewritten for this agent's domain.
 ==============================
 
 Checklist to FAIL the coder:
-1. Did the Coder invent components that don't exist? (Only Card, Column, Row, Text, Icon, Divider, Button, TextField, CheckBox, DateTimeInput, Image, ChoicePicker are allowed). (FAIL if others exist).
+1. Did the Coder invent components that don't exist? (Only Card, Column, Row, Text, Icon, Divider, Button, TextField, CheckBox, DateTimeInput, Image, ChoicePicker, Table, Chart, VegaChart are allowed). (FAIL if others exist).
 2. Did the Coder nest components inside `createSurface.layout` instead of using a flat `updateComponents` array? (FAIL if yes).
 3. Did the Coder use `"text"` or `"label"` on a Button instead of `"child"`? (FAIL if yes).
 4. Did the Coder instruct the use of 'spacing' or 'gap' on a Column or Row? (FAIL if yes).
@@ -784,7 +963,7 @@ Checklist to FAIL the coder:
 11. Did the Coder hallucinate a `"props"` object inside any component? (FAIL if `"props"` exists. All layout/styling properties must be at the root of the component).
 12. If the Coder included a TextField, did it use `"label"` instead of `"placeholder"`? (FAIL if `"placeholder"` is used).
 13. Did the Coder hallucinate `padding`, `margin`, `spacing`, or `gap` on any component? (FAIL if yes, these do not exist).
-14. **TEMPLATE COMPARISON:** Did the Coder modify anything in `agent.py` OTHER than the `tools=[...]` array at the bottom? (FAIL if they modified the boilerplate).
+14. **TEMPLATE COMPARISON:** Did the Coder modify anything in `agent.py` OTHER than the `tools=[...]` array (and removing an unused `well_logs` import)? (FAIL if they modified the boilerplate).
 15. **STRUCTURE AUDIT:** Review the generated `examples/v0_9/*.json` files. While the *use-case* is unique, is the underlying structure, component naming (TitleCase), and strict property usage identical to the A2UI spec? Did they hallucinate CSS properties, wrapper objects, or unapproved keys? (FAIL if yes).
 16. **DROPDOWN MENUS (ChoicePicker)**
 A2UI v0.9 has NO <select> component. For any dropdown / "pick one from a list" UI you MUST use `ChoicePicker`.
@@ -807,7 +986,9 @@ CORRECT:
 17. **WELCOME VIEW FILE EMITTED:** Is there a `<file name="examples/v0_9/welcome_view.json">`block? Does its structure match the golden `welcome_view.json` example (root Column -> welcome_card -> welcome_content; title; subtitle; Divider; 3-5 capability Rows each with an Icon + Text; Divider; "Try saying:" label; exactly ONE starter Row)? (FAIL if the file is missing or the structure deviates).
 18. **WELCOME VIEW CONTENT + WIRING:** Are the 3-5 capabilities real, tool-derived actions (not filler), and is there EXACTLY ONE concrete domain-specific starter prompt (not "Get started"/"Help")? Does `UI_DESCRIPTION` make this STEP 1, rendering ONLY this card on the first turn with NO tool call, then waiting for the user? (FAIL if any are missing).
 19. **ICON NAMES:** Are ALL `Icon` `name` values camelCase entries from the catalog list in Rule 20? (FAIL on any snake_case such as `check_circle` or `play_arrow`).
-
+20. **MESSAGE VERSION:** Does EVERY top-level message object in EVERY `examples/v0_9/*.json` file contain `"version": "v0.9"`? (FAIL if any `createSurface` / `updateComponents` / `updateDataModel` message is missing it).
+21. **VISUALS WIRING:** For every `Table`/`Chart`, is the data sent in an `updateDataModel` BEFORE `updateComponents` and bound as `{"path": "/<name>/rows"}` (never inlined)? Is every `VegaChart` `spec` and every map `Image` `url` exactly `{"path": "/plots/..."}`, backed by a tool that returns `plot_path` / `map_path` from `viz`? Does every submit Button that needs required fields use `checks` (never `disabled`)? (FAIL if not).
+22. **GRID / MODAL / TABS:** Does every `Grid` use a template `{"componentId", "path"}` with RELATIVE bindings inside, and NO `columns` in the example files? Is every `Modal` referenced by a parent (inside a Grid it must live IN the item template, in place of its trigger), with a non-Button trigger, and does ONLY `Button` carry `action`? Does every `Tabs` `child` id exist in the same `updateComponents`? (FAIL if not).
 """ + WELCOME_VIEW_SPEC + """
 
 If the code is PERFECT, reply with EXACTLY '<PASS>'.
@@ -925,46 +1106,27 @@ If the code has errors, reply with '<FAIL>' followed by a detailed list of what 
             content = re.sub(r"\n```$", "", content)
             content = content.strip()
             
+            # if filename == "prompt.py":
+            #     # The Coder sees the template prompt.py (which already defines the
+            #     # boilerplate and the concat line) and often copies them verbatim.
+            #     # Strip any copy so we never define it twice or prepend it twice.
+            #     content = re.sub(
+            #         r'^A2UI_BOILERPLATE_PROMPT\s*=\s*r?""".*?"""\s*',
+            #         "",
+            #         content,
+            #         flags=re.DOTALL,
+            #     )
+            #     content = re.sub(
+            #         r"^\s*UI_DESCRIPTION\s*=\s*A2UI_BOILERPLATE_PROMPT\s*\+.*$",
+            #         "",
+            #         content,
+            #         flags=re.MULTILINE,
+            #     )
+            #     content = content.strip()
             if filename == "prompt.py":
-                # The Coder sees the template prompt.py (which already defines the
-                # boilerplate and the concat line) and often copies them verbatim.
-                # Strip any copy so we never define it twice or prepend it twice.
-                content = re.sub(
-                    r'^A2UI_BOILERPLATE_PROMPT\s*=\s*r?""".*?"""\s*',
-                    "",
-                    content,
-                    flags=re.DOTALL,
-                )
-                content = re.sub(
-                    r"^\s*UI_DESCRIPTION\s*=\s*A2UI_BOILERPLATE_PROMPT\s*\+.*$",
-                    "",
-                    content,
-                    flags=re.MULTILINE,
-                )
-                content = content.strip()
-
-                # Prepend the boilerplate to the file so it sits BEFORE the generated instructions
-                content = f'A2UI_BOILERPLATE_PROMPT = r"""\n{A2UI_BOILERPLATE_PROMPT}\n"""\n\n' + content
-
-                if welcome_enabled:
-                    # DETERMINISTIC GUARANTEE: the welcome view is injected by string
-                    # concatenation, not by asking an LLM nicely. Even if the Planner,
-                    # Coder and Critic all ignored it, the child agent still receives
-                    # it - and the block is written so the agent can derive the card
-                    # from its own tools at runtime.
-                    content = f'WELCOME_VIEW_BLOCK = r"""\n{WELCOME_VIEW_BLOCK}\n"""\n\n' + content
-                    content += (
-                        "\n\nUI_DESCRIPTION = ("
-                        "\n    A2UI_BOILERPLATE_PROMPT"
-                        "\n    + '\\n\\n' + WELCOME_VIEW_BLOCK"
-                        "\n    + '\\n\\n' + UI_DESCRIPTION"
-                        "\n)\n"
-                    )
-                else:
-                    content += "\n\nUI_DESCRIPTION = A2UI_BOILERPLATE_PROMPT + '\\n\\n' + UI_DESCRIPTION\n"
-            
-            
+                content = build_generated_prompt(content, welcome_enabled)
             file_path = os.path.join(output_dir, filename)
+
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
             with open(file_path, "w") as f:
 
